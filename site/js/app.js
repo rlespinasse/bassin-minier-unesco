@@ -228,6 +228,26 @@
         return rows;
     }
 
+    // Data.gouv.fr sources for each dataset
+    var dataGouvSources = {
+        patrimoine: {
+            name: 'Perimetre bien inscrit et zone tampon du Bassin Minier',
+            url: 'https://www.data.gouv.fr/datasets/perimetre-bien-inscrit-et-zone-tampon-du-bassin-minier-patrimoine-mondial-unesco'
+        },
+        puits: {
+            name: 'Anciens puits de mines dans le Bassin minier du Nord-Pas-de-Calais',
+            url: 'https://www.data.gouv.fr/datasets/anciens-puits-de-mines-dans-le-bassin-minier-du-nord-pas-de-calais'
+        },
+        mbm: {
+            name: 'Bassin minier au sens de la Mission Bassin Minier',
+            url: 'https://www.data.gouv.fr/datasets/bassin-minier-au-sens-de-la-mission-bassin-minier'
+        }
+    };
+
+    function sourceRow(source) {
+        return ['Sources', rawHtml('<a href="' + source.url + '" target="_blank" rel="noopener">' + source.name + '</a>')];
+    }
+
     // Detail builders per layer — each returns an array of { label, rows } groups
     var detailBuilders = {
         'bassin-minier': function (p) {
@@ -237,7 +257,8 @@
                         p.surface_km2 && ['Surface', p.surface_km2 + ' km\u00b2'],
                         p.population && ['Population', p.population.toLocaleString('fr-FR')]
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
             ]);
         },
         'bien-inscrit': function (p) {
@@ -252,7 +273,8 @@
                     label: 'Caracteristiques', rows: [
                         p.surface_ha && ['Surface', p.surface_ha + ' ha']
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
             ]);
         },
         'zone-tampon': function (p) {
@@ -266,7 +288,8 @@
                     label: 'Caracteristiques', rows: [
                         p.surface_ha && ['Surface', p.surface_ha + ' ha']
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
             ]);
         },
         'cites-minieres': function (p) {
@@ -288,7 +311,13 @@
                         p.id_lsm && ['ID LSM', p.id_lsm]
                     ]
                 },
-                { label: 'Protection', rows: mhRows(p) }
+                { label: 'Protection', rows: mhRows(p) },
+                {
+                    label: 'Liens', rows: [
+                        p.id_unesco && sourceRow(dataGouvSources.patrimoine),
+                        p.id_lsm && sourceRow(dataGouvSources.mbm)
+                    ]
+                }
             ]);
         },
         'batis': function (p) {
@@ -311,6 +340,12 @@
                     label: 'Protection', rows: [
                         p.protection && p.protection !== 'non' && ['Protection', p.protection]
                     ].concat(mhRows(p))
+                },
+                {
+                    label: 'Liens', rows: [
+                        sourceRow(dataGouvSources.patrimoine),
+                        (p.nom || p.compagnie || p.periode || p.proprietaire || p.protection) && sourceRow(dataGouvSources.mbm)
+                    ]
                 }
             ]);
         },
@@ -334,7 +369,8 @@
                     label: 'Identification', rows: [
                         p.id_unesco && ['ID UNESCO', p.id_unesco]
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
             ]);
         },
         'espace-neonaturel': function (p) {
@@ -348,7 +384,8 @@
                     label: 'Identification', rows: [
                         p.id_unesco && ['ID UNESCO', p.id_unesco]
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
             ]);
         },
         'terrils': function (p) {
@@ -370,7 +407,8 @@
                     label: 'Caracteristiques', rows: [
                         p.forme && ['Forme', p.forme]
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
             ]);
         },
         'communes-mbm': function (p) {
@@ -386,7 +424,8 @@
                         p.population && ['Population', Number(p.population).toLocaleString('fr-FR')],
                         p.surface_km2 && ['Surface', Number(p.surface_km2).toFixed(1) + ' km\u00b2']
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
             ]);
         },
         'zt-cavaliers': function (p) {
@@ -401,7 +440,8 @@
                     label: 'Identification', rows: [
                         p.id_troncon && ['Troncon', p.id_troncon]
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
             ]);
         },
         'zt-cites-minieres': function (p) {
@@ -420,7 +460,8 @@
                         p.interet && ['Interet', p.interet],
                         p.proprietaire && ['Proprietaire', p.proprietaire]
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
             ]);
         },
         'zt-espaces-neonaturels': function (p) {
@@ -434,7 +475,8 @@
                     label: 'Identification', rows: [
                         p.id && ['ID', p.id]
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
             ]);
         },
         'zt-terrils': function (p) {
@@ -455,7 +497,8 @@
                     label: 'Caracteristiques', rows: [
                         p.forme && ['Forme', p.forme]
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
             ]);
         },
         'zt-parvis-agricoles': function (p) {
@@ -470,7 +513,8 @@
                         p.qualite_vue && ['Qualite de vue', p.qualite_vue],
                         p.vue_sur && ['Vue sur', p.vue_sur]
                     ]
-                }
+                },
+                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
             ]);
         },
         'puits-de-mines': function (p) {
@@ -506,7 +550,8 @@
                 },
                 {
                     label: 'Liens', rows: [
-                        p.brgm && ['Fiche BRGM', rawHtml('<a href="' + encodeURI(p.brgm) + '" target="_blank" rel="noopener">Voir</a>')]
+                        p.brgm && ['Fiche BRGM', rawHtml('<a href="' + encodeURI(p.brgm) + '" target="_blank" rel="noopener">Voir</a>')],
+                        sourceRow(dataGouvSources.puits)
                     ]
                 }
             ]);
