@@ -722,13 +722,13 @@
             this._aside = aside;
 
             // Drag handle (mobile)
-            L.DomUtil.create('div', 'layers-drag-handle', aside);
+            L.DomUtil.create('div', 'drag-handle', aside);
 
             // Header
             const header = L.DomUtil.create('div', 'layers-drawer-header', aside);
             const title = L.DomUtil.create('span', 'layers-drawer-title', header);
             title.textContent = 'Couches';
-            const closeBtn = L.DomUtil.create('button', 'layers-drawer-close', header);
+            const closeBtn = L.DomUtil.create('button', 'panel-close-btn', header);
             closeBtn.innerHTML = '&times;';
             closeBtn.title = 'Fermer';
             closeBtn.setAttribute('aria-label', 'Fermer');
@@ -1452,6 +1452,6 @@
 
     // Add drag handle for mobile bottom sheet
     const dragHandle = document.createElement('div');
-    dragHandle.className = 'detail-drag-handle';
+    dragHandle.className = 'drag-handle';
     detailPanel.insertBefore(dragHandle, detailPanel.firstChild);
 })();
