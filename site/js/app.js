@@ -124,22 +124,6 @@
             fillOpacity: 0.05,
             opacity: 0.6
         },
-        'equipements-collectifs': {
-            radius: 6,
-            color: '#0288D1',
-            weight: 1.5,
-            fillColor: '#03A9F4',
-            fillOpacity: 0.7,
-            opacity: 0.9
-        },
-        'equipements-extraction': {
-            radius: 6,
-            color: '#D84315',
-            weight: 1.5,
-            fillColor: '#FF5722',
-            fillOpacity: 0.7,
-            opacity: 0.9
-        },
         'zt-cavaliers': {
             color: '#66BB6A',
             weight: 2,
@@ -179,14 +163,6 @@
             fillOpacity: 0.25,
             opacity: 0.7
         },
-        'cites-erbm': {
-            color: '#CE93D8',
-            weight: 1.5,
-            dashArray: '4 3',
-            fillColor: '#CE93D8',
-            fillOpacity: 0.25,
-            opacity: 0.7
-        }
     };
 
     // Detail panel
@@ -259,10 +235,12 @@
             ]);
         },
         'cites-minieres': function (p) {
-            return buildDetail(p.nom || 'Cite miniere', [
+            var nom = p.nom || 'Cite miniere';
+            if (p.nom_2) nom += ' / ' + p.nom_2;
+            return buildDetail(nom, [
                 {
                     label: 'Localisation', rows: [
-                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
+                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
                     ]
                 },
                 {
@@ -270,14 +248,16 @@
                         p.type && ['Type', p.type],
                         p.compagnie && ['Compagnie', p.compagnie],
                         p.interet && ['Interet', p.interet],
-                        p.id_unesco && ['ID UNESCO', p.id_unesco]
+                        p.proprietaire && ['Proprietaire', p.proprietaire],
+                        p.id_unesco && ['ID UNESCO', p.id_unesco],
+                        p.id_lsm && ['ID LSM', p.id_lsm]
                     ]
                 },
                 { label: 'Protection', rows: mhRows(p) }
             ]);
         },
         'batis': function (p) {
-            return buildDetail(p.denomination || 'Bati minier', [
+            return buildDetail(p.denomination || p.nom || 'Bati minier', [
                 {
                     label: 'Localisation', rows: [
                         p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
@@ -286,10 +266,17 @@
                 {
                     label: 'Identification', rows: [
                         p.typologie && ['Typologie', p.typologie],
+                        p.compagnie && ['Compagnie', p.compagnie],
+                        p.periode && ['Periode', p.periode],
+                        p.proprietaire && ['Proprietaire', p.proprietaire],
                         p.id_unesco && ['ID UNESCO', p.id_unesco]
                     ]
                 },
-                { label: 'Protection', rows: mhRows(p) }
+                {
+                    label: 'Protection', rows: [
+                        p.protection && p.protection !== 'non' && ['Protection', p.protection]
+                    ].concat(mhRows(p))
+                }
             ]);
         },
         'cavaliers': function (p) {
@@ -363,52 +350,6 @@
                     label: 'Caracteristiques', rows: [
                         p.population && ['Population', Number(p.population).toLocaleString('fr-FR')],
                         p.surface_km2 && ['Surface', Number(p.surface_km2).toFixed(1) + ' km\u00b2']
-                    ]
-                }
-            ]);
-        },
-        'equipements-collectifs': function (p) {
-            return buildDetail(p.nom || 'Equipement collectif', [
-                {
-                    label: 'Localisation', rows: [
-                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
-                    ]
-                },
-                {
-                    label: 'Identification', rows: [
-                        p.typologie && ['Typologie', p.typologie],
-                        p.compagnie && ['Compagnie', p.compagnie],
-                        p.periode && ['Periode', p.periode],
-                        p.proprietaire && ['Proprietaire', p.proprietaire],
-                        p.id_unesco && ['ID UNESCO', p.id_unesco]
-                    ]
-                },
-                {
-                    label: 'Protection', rows: [
-                        p.protection && p.protection !== 'non' && ['Protection', p.protection]
-                    ]
-                }
-            ]);
-        },
-        'equipements-extraction': function (p) {
-            return buildDetail(p.nom || 'Equipement d\'extraction', [
-                {
-                    label: 'Localisation', rows: [
-                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
-                    ]
-                },
-                {
-                    label: 'Identification', rows: [
-                        p.typologie && ['Typologie', p.typologie],
-                        p.compagnie && ['Compagnie', p.compagnie],
-                        p.periode && ['Periode', p.periode],
-                        p.proprietaire && ['Proprietaire', p.proprietaire],
-                        p.id_unesco && ['ID UNESCO', p.id_unesco]
-                    ]
-                },
-                {
-                    label: 'Protection', rows: [
-                        p.protection && p.protection !== 'non' && ['Protection', p.protection]
                     ]
                 }
             ]);
@@ -497,25 +438,6 @@
                 }
             ]);
         },
-        'cites-erbm': function (p) {
-            var nom = p.nom || 'Cite miniere (ERBM)';
-            if (p.nom_2) nom += ' / ' + p.nom_2;
-            return buildDetail(nom, [
-                {
-                    label: 'Localisation', rows: [
-                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
-                    ]
-                },
-                {
-                    label: 'Identification', rows: [
-                        p.type && ['Type', p.type],
-                        p.compagnie && ['Compagnie', p.compagnie],
-                        p.interet && ['Interet', p.interet],
-                        p.proprietaire && ['Proprietaire', p.proprietaire]
-                    ]
-                }
-            ]);
-        },
         'puits-de-mines': function (p) {
             var title = 'Puits';
             if (p.fosse) {
@@ -599,9 +521,7 @@
                 { id: 'bien-inscrit', label: 'Bien inscrit', file: 'data/bien-inscrit.geojson', active: true },
                 { id: 'cavaliers', label: 'Cavaliers', file: 'data/cavaliers.geojson', active: true },
                 { id: 'cites-minieres', label: 'Cites minieres', file: 'data/cites-minieres.geojson', active: true },
-                { id: 'equipements-collectifs', label: 'Equipements collectifs', file: 'data/equipements-collectifs.geojson', active: true },
-                { id: 'equipements-extraction', label: 'Equipements d\'extraction', file: 'data/equipements-extraction.geojson', active: true },
-                { id: 'espace-neonaturel', label: 'Espaces neo-naturels', file: 'data/espace-neonaturel.geojson', active: true },
+{ id: 'espace-neonaturel', label: 'Espaces neo-naturels', file: 'data/espace-neonaturel.geojson', active: true },
                 { id: 'terrils', label: 'Terrils', file: 'data/terrils.geojson', active: true },
                 { id: 'zone-tampon', label: 'Zone tampon', file: 'data/zone-tampon.geojson', active: true }
             ]
@@ -617,8 +537,7 @@
         },
         {
             group: 'Inventaire minier', layers: [
-                { id: 'puits-de-mines', label: 'Puits de mines', file: 'data/puits-de-mines.geojson', active: false },
-                { id: 'cites-erbm', label: 'Cites minieres (ERBM)', file: 'data/cites-erbm.geojson', active: false }
+                { id: 'puits-de-mines', label: 'Puits de mines', file: 'data/puits-de-mines.geojson', active: false }
             ]
         },
         {
@@ -813,21 +732,18 @@
         'bassin-minier': { title: function (p) { return p.nom; }, meta: function () { return 'Perimetre'; }, text: ['nom'] },
         'bien-inscrit': { title: function (p) { return p.nom; }, meta: function (p) { return 'Bien inscrit' + (p.section ? ' - ' + p.section : ''); }, text: ['nom', 'section'] },
         'zone-tampon': { title: function (p) { return 'Zone tampon ' + (p.id || ''); }, meta: function () { return 'Zone tampon'; }, text: ['id'] },
-        'cites-minieres': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Cite miniere'; }, text: ['nom', 'commune_1', 'commune_2', 'compagnie'] },
-        'batis': { title: function (p) { return p.denomination; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Bati minier'; }, text: ['denomination', 'commune_1', 'commune_2', 'typologie'] },
+        'cites-minieres': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2, p.commune_3]) || 'Cite miniere'; }, text: ['nom', 'nom_2', 'commune_1', 'commune_2', 'commune_3', 'compagnie', 'proprietaire'] },
+        'batis': { title: function (p) { return p.denomination || p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Bati minier'; }, text: ['denomination', 'nom', 'commune_1', 'commune_2', 'typologie', 'compagnie', 'proprietaire'] },
         'cavaliers': { title: function (p) { return 'Cavalier' + (p.id_unesco ? ' ' + p.id_unesco : ''); }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2, p.commune_3]) || 'Cavalier'; }, text: ['commune_1', 'commune_2', 'commune_3', 'commune_4', 'commune_5', 'commune_6', 'id_unesco'] },
         'espace-neonaturel': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Espace neo-naturel'; }, text: ['nom', 'commune_1', 'commune_2'] },
         'terrils': { title: function (p) { return p.nom || 'Terril ' + (p.no_terril || ''); }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Terril'; }, text: ['nom', 'no_terril', 'commune_1', 'commune_2', 'compagnie'] },
         'puits-de-mines': { title: function (p) { return p.fosse ? 'Fosse ' + p.fosse + (p.fosse_alias ? ' (' + p.fosse_alias + ')' : '') : 'Puits'; }, meta: function (p) { return p.commune || 'Puits de mine'; }, text: ['fosse', 'fosse_alias', 'puits', 'commune', 'compagnie', 'concession'] },
         'communes-mbm': { title: function (p) { return p.nom; }, meta: function (p) { return 'Commune' + (p.population ? ' - pop. ' + Number(p.population).toLocaleString('fr-FR') : ''); }, text: ['nom', 'insee'] },
-        'equipements-collectifs': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.typologie]) || 'Equipement collectif'; }, text: ['nom', 'commune_1', 'commune_2', 'typologie', 'compagnie'] },
-        'equipements-extraction': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.typologie]) || 'Equipement d\'extraction'; }, text: ['nom', 'commune_1', 'commune_2', 'typologie', 'compagnie'] },
-        'zt-cavaliers': { title: function (p) { return p.nom || 'Cavalier (ZT)'; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Cavalier (zone tampon)'; }, text: ['nom', 'commune_1', 'commune_2', 'commune_3', 'commune_4', 'id_troncon'] },
+'zt-cavaliers': { title: function (p) { return p.nom || 'Cavalier (ZT)'; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Cavalier (zone tampon)'; }, text: ['nom', 'commune_1', 'commune_2', 'commune_3', 'commune_4', 'id_troncon'] },
         'zt-cites-minieres': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Cite miniere (zone tampon)'; }, text: ['nom', 'nom_2', 'commune_1', 'commune_2', 'compagnie'] },
         'zt-espaces-neonaturels': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Espace neo-naturel (zone tampon)'; }, text: ['nom', 'commune_1', 'commune_2'] },
         'zt-terrils': { title: function (p) { return p.nom || 'Terril (ZT)'; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Terril (zone tampon)'; }, text: ['nom', 'nom_usuel', 'commune_1', 'commune_2'] },
-        'zt-parvis-agricoles': { title: function (p) { return 'Parvis agricole ' + (p.id || ''); }, meta: function (p) { return p.qualite_vue || 'Parvis agricole'; }, text: ['id', 'qualite_vue', 'vue_sur'] },
-        'cites-erbm': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Cite miniere (ERBM)'; }, text: ['nom', 'nom_2', 'commune_1', 'commune_2', 'compagnie'] }
+        'zt-parvis-agricoles': { title: function (p) { return 'Parvis agricole ' + (p.id || ''); }, meta: function (p) { return p.qualite_vue || 'Parvis agricole'; }, text: ['id', 'qualite_vue', 'vue_sur'] }
     };
 
     // Build search index after all layers loaded

@@ -20,7 +20,7 @@ install:
 
 # Download and convert all data sources to GeoJSON
 [group('data')]
-convert: convert-wfs convert-shapefiles
+convert: convert-wfs convert-shapefiles enrich
 
 # Download from WFS endpoints and convert to GeoJSON
 [group('data')]
@@ -31,6 +31,11 @@ convert-wfs:
 [group('data')]
 convert-shapefiles:
     {{ python }} scripts/convert_shapefiles.py
+
+# Enrich and deduplicate GeoJSON files (merge overlapping datasets)
+[group('data')]
+enrich:
+    {{ python }} scripts/enrich_geojson.py
 
 # Remove generated GeoJSON files
 [group('data')]
@@ -56,7 +61,7 @@ dev: convert serve
 
 # --- Quality ---
 
-# Check that all 18 GeoJSON files exist in site/data/
+# Check that all 15 GeoJSON files exist in site/data/
 [group('quality')]
 check:
     #!/usr/bin/env bash
@@ -72,14 +77,11 @@ check:
         terrils.geojson
         puits-de-mines.geojson
         communes-mbm.geojson
-        equipements-collectifs.geojson
-        equipements-extraction.geojson
         zt-cavaliers.geojson
         zt-cites-minieres.geojson
         zt-espaces-neonaturels.geojson
         zt-terrils.geojson
         zt-parvis-agricoles.geojson
-        cites-erbm.geojson
     )
     missing=0
     for f in "${files[@]}"; do
