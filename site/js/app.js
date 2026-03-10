@@ -623,7 +623,11 @@
         },
         {
             group: 'Perimetre', layers: [
-                { id: 'bassin-minier', label: 'Bassin minier (ERBM)', file: 'data/bassin-minier.geojson', active: false },
+                { id: 'bassin-minier', label: 'Bassin minier (ERBM)', file: 'data/bassin-minier.geojson', active: true }
+            ]
+        },
+        {
+            group: 'Contexte', layers: [
                 { id: 'communes-mbm', label: 'Communes', file: 'data/communes-mbm.geojson', active: false }
             ]
         }
@@ -761,6 +765,14 @@
                         } else {
                             self._map.removeLayer(def._leafletLayer);
                         }
+                        // Sync bassin-minier mask
+                        if (def.id === 'bassin-minier' && bassinMask) {
+                            if (input.checked) {
+                                bassinMask.addTo(self._map);
+                            } else {
+                                self._map.removeLayer(bassinMask);
+                            }
+                        }
                         // Update group checkbox state
                         var allChecked = layerInputs.every(function (li) { return li.input.checked; });
                         var someChecked = layerInputs.some(function (li) { return li.input.checked; });
@@ -779,6 +791,14 @@
                             li.def._leafletLayer.addTo(self._map);
                         } else {
                             self._map.removeLayer(li.def._leafletLayer);
+                        }
+                        // Sync bassin-minier mask
+                        if (li.def.id === 'bassin-minier' && bassinMask) {
+                            if (checked) {
+                                bassinMask.addTo(self._map);
+                            } else {
+                                self._map.removeLayer(bassinMask);
+                            }
                         }
                     });
                 });
@@ -990,6 +1010,24 @@
 
     var boundsGroup = L.featureGroup();
     var loadedCount = 0;
+    var bassinMask = null; // Inverted mask layer for bassin-minier
+
+    // Build an inverted polygon (world exterior with hole cut for the given coordinates)
+    function createMaskLayer(coordinates) {
+        var world = [
+            [-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]
+        ];
+        // Leaflet expects [lat, lng], GeoJSON gives [lng, lat]
+        var worldLatLng = world.map(function (c) { return [c[0], c[1]]; });
+        var holeLatLng = coordinates[0].map(function (c) { return [c[1], c[0]]; });
+        return L.polygon([worldLatLng, holeLatLng], {
+            color: 'none',
+            fillColor: '#000',
+            fillOpacity: 0.3,
+            stroke: false,
+            interactive: false
+        });
+    }
 
     allLayerDefs.forEach(function (def) {
         fetch(def.file)
@@ -1018,6 +1056,14 @@
                 }
                 var layer = L.geoJSON(geojson, layerOpts);
                 def._leafletLayer = layer;
+
+                // Create inverted mask for bassin-minier
+                if (def.id === 'bassin-minier' && geojson.features && geojson.features[0]) {
+                    bassinMask = createMaskLayer(geojson.features[0].geometry.coordinates);
+                    if (def.active !== false) {
+                        bassinMask.addTo(map);
+                    }
+                }
 
                 if (def.active !== false) {
                     layer.addTo(map);
