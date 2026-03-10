@@ -11,28 +11,17 @@
     <link rel="stylesheet" href="css/search.css">
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <h1>Bassin Minier du Nord-Pas de Calais</h1>
-            <p>Patrimoine mondial de l'UNESCO - Paysage culturel evolutif vivant, inscrit en 2012</p>
-        </div>
-    </header>
-
     <main>
         <div id="map"></div>
-        <aside id="detail-panel" class="detail-panel hidden">
+        <div id="loading-overlay" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Chargement des donnees...</div>
+        </div>
+        <aside id="detail-panel" class="detail-panel">
             <button id="detail-close" class="detail-close" aria-label="Fermer">&times;</button>
             <div id="detail-content"></div>
         </aside>
     </main>
-
-    <footer>
-        <p>
-            Donnees : <a href="https://www.missionbassinminier.org" target="_blank" rel="noopener">Mission Bassin Minier Nord-Pas de Calais</a>
-            &mdash; Licence <a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/" target="_blank" rel="noopener">ETALAB Ouverte v2.0</a>
-            &mdash; <span id="base-layer-attribution">Fond de carte &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></span>
-        </p>
-    </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="

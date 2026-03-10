@@ -2,7 +2,7 @@
     'use strict';
 
     // Map initialization
-    var map = L.map('map').setView([50.35, 2.8], 10);
+    var map = L.map('map', { zoomControl: false }).setView([50.35, 2.8], 10);
 
     // Base layers
     var ignPlan = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
@@ -33,20 +33,25 @@
         'Satellite': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/10/345/520'
     };
 
-    var baseLayerAttributions = {
-        'IGN': 'Fond de carte &copy; <a href="https://www.ign.fr/" target="_blank" rel="noopener">IGN</a>',
-        'Clair': 'Fond de carte &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, &copy; <a href="https://carto.com/" target="_blank" rel="noopener">CARTO</a>',
-        'Satellite': 'Fond de carte &copy; <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>, Maxar, Earthstar Geographics'
-    };
-
     cartoPositron.addTo(map);
 
-    map.on('baselayerchange', function (e) {
-        var el = document.getElementById('base-layer-attribution');
-        if (el && baseLayerAttributions[e.name]) {
-            el.innerHTML = baseLayerAttributions[e.name];
+    // Title overlay control
+    var TitleControl = L.Control.extend({
+        options: { position: 'topleft' },
+        onAdd: function () {
+            var div = L.DomUtil.create('div', 'title-overlay');
+            div.innerHTML = '<h1>Bassin Minier du Nord-Pas de Calais</h1>' +
+                '<p>Patrimoine mondial de l\'UNESCO — Paysage culturel évolutif vivant, inscrit en 2012</p>';
+            L.DomEvent.disableClickPropagation(div);
+            return div;
         }
     });
+    new TitleControl().addTo(map);
+
+    // Data source attribution
+    map.attributionControl.addAttribution(
+        'Données <a href="https://www.missionbassinminier.org">Mission Bassin Minier</a> — <a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/">Licence ETALAB v2.0</a>'
+    );
 
     // Layer styles
     var styles = {
@@ -167,6 +172,34 @@
         },
     };
 
+    // Hover highlight styles per layer
+    function getHoverStyle(layerId) {
+        var base = styles[layerId];
+        if (base.radius) {
+            return { radius: base.radius + 2, weight: 3, fillOpacity: 0.9 };
+        }
+        return { weight: (base.weight || 2) + 2, fillOpacity: Math.min((base.fillOpacity || 0.2) + 0.2, 0.8) };
+    }
+
+    // Tooltip text per layer
+    var tooltipText = {
+        'bassin-minier': function (p) { return p.nom; },
+        'bien-inscrit': function (p) { return p.nom; },
+        'zone-tampon': function (p) { return 'Zone tampon' + (p.id ? ' ' + p.id : ''); },
+        'cites-minieres': function (p) { return p.nom; },
+        'batis': function (p) { return p.denomination || p.nom; },
+        'cavaliers': function (p) { return 'Cavalier' + (p.id_unesco ? ' ' + p.id_unesco : ''); },
+        'espace-neonaturel': function (p) { return p.nom; },
+        'terrils': function (p) { return p.nom || ('Terril ' + (p.no_terril || '')); },
+        'puits-de-mines': function (p) { return p.fosse ? 'Fosse ' + p.fosse : 'Puits'; },
+        'communes-mbm': function (p) { return p.nom; },
+        'zt-cavaliers': function (p) { return p.nom || 'Cavalier (ZT)'; },
+        'zt-cites-minieres': function (p) { return p.nom; },
+        'zt-espaces-neonaturels': function (p) { return p.nom; },
+        'zt-terrils': function (p) { return p.nom || 'Terril (ZT)'; },
+        'zt-parvis-agricoles': function (p) { return 'Parvis agricole' + (p.id ? ' ' + p.id : ''); }
+    };
+
     // Detail panel
     var detailPanel = document.getElementById('detail-panel');
     var detailContent = document.getElementById('detail-content');
@@ -174,12 +207,12 @@
 
     function showDetail(html) {
         detailContent.innerHTML = html;
-        detailPanel.classList.remove('hidden');
+        detailPanel.classList.add('open');
         map.invalidateSize();
     }
 
     function hideDetail() {
-        detailPanel.classList.add('hidden');
+        detailPanel.classList.remove('open');
         map.invalidateSize();
     }
 
@@ -198,7 +231,7 @@
     // Detail builders per layer — each returns an array of { label, rows } groups
     var detailBuilders = {
         'bassin-minier': function (p) {
-            return buildDetail(p.nom || 'Bassin minier', [
+            return buildDetail(p.nom || 'Bassin minier', 'bassin-minier', [
                 {
                     label: 'Caracteristiques', rows: [
                         p.surface_km2 && ['Surface', p.surface_km2 + ' km\u00b2'],
@@ -208,7 +241,7 @@
             ]);
         },
         'bien-inscrit': function (p) {
-            return buildDetail(p.nom || 'Bien inscrit UNESCO', [
+            return buildDetail(p.nom || 'Bien inscrit UNESCO', 'bien-inscrit', [
                 {
                     label: 'Identification', rows: [
                         p.section && ['Section', p.section],
@@ -223,7 +256,7 @@
             ]);
         },
         'zone-tampon': function (p) {
-            return buildDetail('Zone tampon', [
+            return buildDetail('Zone tampon', 'zone-tampon', [
                 {
                     label: 'Identification', rows: [
                         p.id && ['ID', p.id]
@@ -239,7 +272,7 @@
         'cites-minieres': function (p) {
             var nom = p.nom || 'Cite miniere';
             if (p.nom_2) nom += ' / ' + p.nom_2;
-            return buildDetail(nom, [
+            return buildDetail(nom, 'cites-minieres', [
                 {
                     label: 'Localisation', rows: [
                         p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
@@ -259,7 +292,7 @@
             ]);
         },
         'batis': function (p) {
-            return buildDetail(p.denomination || p.nom || 'Bati minier', [
+            return buildDetail(p.denomination || p.nom || 'Bati minier', 'batis', [
                 {
                     label: 'Localisation', rows: [
                         p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
@@ -286,7 +319,7 @@
                 p.commune_1, p.commune_2, p.commune_3,
                 p.commune_4, p.commune_5, p.commune_6
             ]);
-            return buildDetail('Cavalier minier', [
+            return buildDetail('Cavalier minier', 'cavaliers', [
                 {
                     label: 'Localisation', rows: [
                         communes && ['Communes', communes]
@@ -305,7 +338,7 @@
             ]);
         },
         'espace-neonaturel': function (p) {
-            return buildDetail(p.nom || 'Espace neo-naturel', [
+            return buildDetail(p.nom || 'Espace neo-naturel', 'espace-neonaturel', [
                 {
                     label: 'Localisation', rows: [
                         p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
@@ -319,7 +352,7 @@
             ]);
         },
         'terrils': function (p) {
-            return buildDetail(p.nom || 'Terril', [
+            return buildDetail(p.nom || 'Terril', 'terrils', [
                 {
                     label: 'Localisation', rows: [
                         p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
@@ -341,7 +374,7 @@
             ]);
         },
         'communes-mbm': function (p) {
-            return buildDetail(p.nom || 'Commune', [
+            return buildDetail(p.nom || 'Commune', 'communes-mbm', [
                 {
                     label: 'Identification', rows: [
                         p.insee && ['INSEE', p.insee],
@@ -358,7 +391,7 @@
         },
         'zt-cavaliers': function (p) {
             var communes = joinNotNull([p.commune_1, p.commune_2, p.commune_3, p.commune_4]);
-            return buildDetail(p.nom || 'Cavalier (zone tampon)', [
+            return buildDetail(p.nom || 'Cavalier (zone tampon)', 'zt-cavaliers', [
                 {
                     label: 'Localisation', rows: [
                         communes && ['Communes', communes]
@@ -374,7 +407,7 @@
         'zt-cites-minieres': function (p) {
             var nom = p.nom || 'Cite miniere (zone tampon)';
             if (p.nom_2) nom += ' / ' + p.nom_2;
-            return buildDetail(nom, [
+            return buildDetail(nom, 'zt-cites-minieres', [
                 {
                     label: 'Localisation', rows: [
                         p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
@@ -391,7 +424,7 @@
             ]);
         },
         'zt-espaces-neonaturels': function (p) {
-            return buildDetail(p.nom || 'Espace neo-naturel (zone tampon)', [
+            return buildDetail(p.nom || 'Espace neo-naturel (zone tampon)', 'zt-espaces-neonaturels', [
                 {
                     label: 'Localisation', rows: [
                         p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
@@ -407,7 +440,7 @@
         'zt-terrils': function (p) {
             var nom = p.nom || 'Terril (zone tampon)';
             if (p.nom_usuel) nom += ' (' + p.nom_usuel + ')';
-            return buildDetail(nom, [
+            return buildDetail(nom, 'zt-terrils', [
                 {
                     label: 'Localisation', rows: [
                         p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
@@ -426,7 +459,7 @@
             ]);
         },
         'zt-parvis-agricoles': function (p) {
-            return buildDetail('Parvis agricole', [
+            return buildDetail('Parvis agricole', 'zt-parvis-agricoles', [
                 {
                     label: 'Identification', rows: [
                         p.id && ['ID', p.id]
@@ -446,7 +479,7 @@
                 title = 'Fosse ' + p.fosse;
                 if (p.fosse_alias) title += ' (' + p.fosse_alias + ')';
             }
-            return buildDetail(title, [
+            return buildDetail(title, 'puits-de-mines', [
                 {
                     label: 'Localisation', rows: [
                         p.commune && ['Commune', p.commune],
@@ -498,8 +531,9 @@
         return escapeHtml(val);
     }
 
-    function buildDetail(title, groups) {
-        var html = '<h3>' + escapeHtml(title) + '</h3>';
+    function buildDetail(title, layerId, groups) {
+        var color = styles[layerId] ? (styles[layerId].fillColor || styles[layerId].color) : '#888';
+        var html = '<h3><span class="detail-layer-badge" style="background:' + color + '"></span>' + escapeHtml(title) + '</h3>';
         groups.forEach(function (group) {
             // Filter out falsy rows (from conditional && expressions)
             var rows = group.rows.filter(Boolean);
@@ -523,7 +557,7 @@
                 { id: 'bien-inscrit', label: 'Bien inscrit', file: 'data/bien-inscrit.geojson', active: true },
                 { id: 'cavaliers', label: 'Cavaliers', file: 'data/cavaliers.geojson', active: true },
                 { id: 'cites-minieres', label: 'Cites minieres', file: 'data/cites-minieres.geojson', active: true },
-{ id: 'espace-neonaturel', label: 'Espaces neo-naturels', file: 'data/espace-neonaturel.geojson', active: true },
+                { id: 'espace-neonaturel', label: 'Espaces neo-naturels', file: 'data/espace-neonaturel.geojson', active: true },
                 { id: 'terrils', label: 'Terrils', file: 'data/terrils.geojson', active: true },
                 { id: 'zone-tampon', label: 'Zone tampon', file: 'data/zone-tampon.geojson', active: true }
             ]
@@ -542,16 +576,12 @@
                 { id: 'puits-de-mines', label: 'Puits de mines', file: 'data/puits-de-mines.geojson', active: false }
             ]
         },
-        {
-            group: 'Perimetre', layers: [
-                { id: 'bassin-minier', label: 'Bassin minier (ERBM)', file: 'data/bassin-minier.geojson', active: true }
-            ]
-        },
-        {
-            group: 'Contexte', layers: [
-                { id: 'communes-mbm', label: 'Communes', file: 'data/communes-mbm.geojson', active: false }
-            ]
-        }
+    ];
+
+    // Context layers displayed in a separate picker (like fond de carte)
+    var contextLayers = [
+        { id: 'bassin-minier', label: 'Bassin minier (ERBM)', file: 'data/bassin-minier.geojson', active: true },
+        { id: 'communes-mbm', label: 'Communes', file: 'data/communes-mbm.geojson', active: false }
     ];
 
     // Flatten for loading
@@ -559,6 +589,7 @@
     layerGroups.forEach(function (g) {
         g.layers.forEach(function (def) { allLayerDefs.push(def); });
     });
+    contextLayers.forEach(function (def) { allLayerDefs.push(def); });
 
     // Base layer picker control (bottom-left button + popup panel)
     var BaseLayerPicker = L.Control.extend({
@@ -643,13 +674,85 @@
         }
     });
 
-    // Grouped layer control (overlays only)
+    // Context layer picker (bottom-left, next to base layer picker)
+    var ContextLayerPicker = L.Control.extend({
+        options: { position: 'bottomleft' },
+        initialize: function (layers, options) {
+            L.Util.setOptions(this, options);
+            this._layers = layers;
+        },
+        onAdd: function () {
+            var wrapper = L.DomUtil.create('div', 'context-layer-picker');
+            L.DomEvent.disableClickPropagation(wrapper);
+            L.DomEvent.disableScrollPropagation(wrapper);
+            var self = this;
+
+            // Toggle button with layers icon
+            var toggle = L.DomUtil.create('button', 'context-layer-toggle', wrapper);
+            toggle.type = 'button';
+            toggle.title = 'Couches de contexte';
+            toggle.setAttribute('aria-label', 'Couches de contexte');
+            toggle.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
+
+            // Popup panel
+            var panel = L.DomUtil.create('div', 'context-layer-panel', wrapper);
+            var panelTitle = L.DomUtil.create('div', 'context-layer-panel-title', panel);
+            panelTitle.textContent = 'Couches de contexte';
+            var list = L.DomUtil.create('div', 'context-layer-list', panel);
+
+            this._layers.forEach(function (def) {
+                var item = L.DomUtil.create('label', 'context-layer-item', list);
+                var color = styles[def.id].fillColor || styles[def.id].color;
+
+                var cb = L.DomUtil.create('input', 'context-layer-checkbox', item);
+                cb.type = 'checkbox';
+                cb.checked = def.active !== false;
+                item.style.setProperty('--layer-color', color);
+
+                var swatch = L.DomUtil.create('span', 'context-layer-swatch', item);
+                swatch.style.background = color;
+
+                var labelText = L.DomUtil.create('span', 'context-layer-label', item);
+                labelText.textContent = def.label;
+
+                cb.addEventListener('change', function () {
+                    if (!def._leafletLayer) return;
+                    if (cb.checked) {
+                        def._leafletLayer.addTo(self._map);
+                    } else {
+                        self._map.removeLayer(def._leafletLayer);
+                    }
+                    // Sync bassin-minier mask
+                    if (def.id === 'bassin-minier' && bassinMask) {
+                        if (cb.checked) {
+                            bassinMask.addTo(self._map);
+                        } else {
+                            self._map.removeLayer(bassinMask);
+                        }
+                    }
+                });
+            });
+
+            toggle.addEventListener('click', function () {
+                panel.classList.toggle('open');
+            });
+
+            this._map.on('click', function () {
+                panel.classList.remove('open');
+            });
+
+            return wrapper;
+        }
+    });
+
+    // Grouped layer control (overlays only) with collapsible groups and feature counts
     var GroupedLayerControl = L.Control.extend({
         options: { position: 'topright', collapsed: false },
         initialize: function (layerGroups, options) {
             L.Util.setOptions(this, options);
             this._layerGroups = layerGroups;
             this._layerMap = {};
+            this._countSpans = {};
         },
         onAdd: function () {
             var container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control-layers-expanded grouped-layers');
@@ -663,10 +766,16 @@
                 var groupInput = L.DomUtil.create('input', '', groupLabel);
                 groupInput.type = 'checkbox';
                 groupInput.checked = g.layers.some(function (d) { return d.active !== false; });
+
+                // Collapse/expand toggle arrow
+                var toggleArrow = L.DomUtil.create('span', 'group-toggle', groupLabel);
+                toggleArrow.textContent = '\u25BC';
+
                 var groupSpan = L.DomUtil.create('span', '', groupLabel);
                 groupSpan.textContent = ' ' + g.group;
 
                 var groupList = L.DomUtil.create('div', 'grouped-layers-list', container);
+                // Calculate natural height for animation
                 var layerInputs = [];
 
                 g.layers.forEach(function (def) {
@@ -679,6 +788,11 @@
                     layerInputs.push({ input: input, def: def });
                     var span = L.DomUtil.create('span', '', label);
                     span.textContent = ' ' + def.label;
+
+                    // Feature count badge
+                    var countSpan = L.DomUtil.create('span', 'layer-count', label);
+                    self._countSpans[def.id] = countSpan;
+
                     input.addEventListener('change', function () {
                         if (!def._leafletLayer) return;
                         if (input.checked) {
@@ -686,20 +800,42 @@
                         } else {
                             self._map.removeLayer(def._leafletLayer);
                         }
-                        // Sync bassin-minier mask
-                        if (def.id === 'bassin-minier' && bassinMask) {
-                            if (input.checked) {
-                                bassinMask.addTo(self._map);
-                            } else {
-                                self._map.removeLayer(bassinMask);
-                            }
-                        }
                         // Update group checkbox state
                         var allChecked = layerInputs.every(function (li) { return li.input.checked; });
                         var someChecked = layerInputs.some(function (li) { return li.input.checked; });
                         groupInput.checked = someChecked;
                         groupInput.indeterminate = someChecked && !allChecked;
                     });
+                });
+
+                // Collapse/expand behavior
+                // Start inactive groups collapsed
+                var isCollapsed = !g.layers.some(function (d) { return d.active !== false; });
+                if (isCollapsed) {
+                    groupList.classList.add('collapsed');
+                    toggleArrow.classList.add('collapsed');
+                }
+                // Set initial max-height for animation
+                requestAnimationFrame(function () {
+                    if (!groupList.classList.contains('collapsed')) {
+                        groupList.style.maxHeight = groupList.scrollHeight + 'px';
+                    }
+                });
+
+                toggleArrow.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (groupList.classList.contains('collapsed')) {
+                        groupList.classList.remove('collapsed');
+                        toggleArrow.classList.remove('collapsed');
+                        groupList.style.maxHeight = groupList.scrollHeight + 'px';
+                    } else {
+                        groupList.style.maxHeight = groupList.scrollHeight + 'px';
+                        // Force reflow
+                        groupList.offsetHeight; // eslint-disable-line no-unused-expressions
+                        groupList.classList.add('collapsed');
+                        toggleArrow.classList.add('collapsed');
+                    }
                 });
 
                 groupInput.addEventListener('change', function () {
@@ -713,23 +849,20 @@
                         } else {
                             self._map.removeLayer(li.def._leafletLayer);
                         }
-                        // Sync bassin-minier mask
-                        if (li.def.id === 'bassin-minier' && bassinMask) {
-                            if (checked) {
-                                bassinMask.addTo(self._map);
-                            } else {
-                                self._map.removeLayer(bassinMask);
-                            }
-                        }
                     });
                 });
             });
 
             return container;
+        },
+        updateCount: function (layerId, count) {
+            if (this._countSpans[layerId]) {
+                this._countSpans[layerId].textContent = '(' + count + ')';
+            }
         }
     });
 
-    // Search control
+    // Search control with clear button
     var searchableProps = {
         'bassin-minier': { title: function (p) { return p.nom; }, meta: function () { return 'Perimetre'; }, text: ['nom'] },
         'bien-inscrit': { title: function (p) { return p.nom; }, meta: function (p) { return 'Bien inscrit' + (p.section ? ' - ' + p.section : ''); }, text: ['nom', 'section'] },
@@ -741,7 +874,7 @@
         'terrils': { title: function (p) { return p.nom || 'Terril ' + (p.no_terril || ''); }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Terril'; }, text: ['nom', 'no_terril', 'commune_1', 'commune_2', 'compagnie'] },
         'puits-de-mines': { title: function (p) { return p.fosse ? 'Fosse ' + p.fosse + (p.fosse_alias ? ' (' + p.fosse_alias + ')' : '') : 'Puits'; }, meta: function (p) { return p.commune || 'Puits de mine'; }, text: ['fosse', 'fosse_alias', 'puits', 'commune', 'compagnie', 'concession'] },
         'communes-mbm': { title: function (p) { return p.nom; }, meta: function (p) { return 'Commune' + (p.population ? ' - pop. ' + Number(p.population).toLocaleString('fr-FR') : ''); }, text: ['nom', 'insee'] },
-'zt-cavaliers': { title: function (p) { return p.nom || 'Cavalier (ZT)'; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Cavalier (zone tampon)'; }, text: ['nom', 'commune_1', 'commune_2', 'commune_3', 'commune_4', 'id_troncon'] },
+        'zt-cavaliers': { title: function (p) { return p.nom || 'Cavalier (ZT)'; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Cavalier (zone tampon)'; }, text: ['nom', 'commune_1', 'commune_2', 'commune_3', 'commune_4', 'id_troncon'] },
         'zt-cites-minieres': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Cite miniere (zone tampon)'; }, text: ['nom', 'nom_2', 'commune_1', 'commune_2', 'compagnie'] },
         'zt-espaces-neonaturels': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Espace neo-naturel (zone tampon)'; }, text: ['nom', 'commune_1', 'commune_2'] },
         'zt-terrils': { title: function (p) { return p.nom || 'Terril (ZT)'; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Terril (zone tampon)'; }, text: ['nom', 'nom_usuel', 'commune_1', 'commune_2'] },
@@ -782,15 +915,75 @@
             L.DomEvent.disableClickPropagation(container);
             L.DomEvent.disableScrollPropagation(container);
 
-            var input = L.DomUtil.create('input', '', container);
+            var inputWrapper = L.DomUtil.create('div', 'search-input-wrapper', container);
+            var input = L.DomUtil.create('input', '', inputWrapper);
             input.type = 'text';
             input.placeholder = 'Rechercher un lieu...';
             input.setAttribute('aria-label', 'Rechercher');
 
+            // Clear button
+            var clearBtn = L.DomUtil.create('button', 'search-clear', inputWrapper);
+            clearBtn.type = 'button';
+            clearBtn.innerHTML = '&times;';
+            clearBtn.title = 'Effacer';
+            clearBtn.setAttribute('aria-label', 'Effacer la recherche');
+
             var results = L.DomUtil.create('div', 'search-results', container);
             var activeIndex = -1;
+            var previewLayer = null;
+            var previewLayerId = null;
+
+            function previewHighlight(item) {
+                previewUnhighlight();
+                if (item && item.layer) {
+                    previewLayer = item.layer;
+                    previewLayerId = item.layerId;
+                    if (previewLayer.setStyle) {
+                        previewLayer.setStyle(getHoverStyle(item.layerId));
+                        if (previewLayer.bringToFront && item.layerId !== 'bassin-minier' && item.layerId !== 'communes-mbm') {
+                            previewLayer.bringToFront();
+                        }
+                    }
+                    if (previewLayer.getTooltip && previewLayer.getTooltip()) {
+                        previewLayer.openTooltip();
+                    }
+                }
+            }
+
+            function previewUnhighlight() {
+                if (previewLayer) {
+                    if (previewLayer.setStyle && previewLayerId) {
+                        previewLayer.setStyle(styles[previewLayerId]);
+                    }
+                    if (previewLayer.getTooltip && previewLayer.getTooltip()) {
+                        previewLayer.closeTooltip();
+                    }
+                    previewLayer = null;
+                    previewLayerId = null;
+                }
+            }
+
+            function updateClearBtn() {
+                if (input.value.length > 0) {
+                    clearBtn.classList.add('visible');
+                    input.classList.add('expanded');
+                } else {
+                    clearBtn.classList.remove('visible');
+                }
+            }
+
+            input.addEventListener('focus', function () {
+                input.classList.add('expanded');
+            });
+
+            input.addEventListener('blur', function () {
+                if (input.value.length === 0) {
+                    input.classList.remove('expanded');
+                }
+            });
 
             function clearResults() {
+                previewUnhighlight();
                 results.innerHTML = '';
                 results.classList.remove('open');
                 activeIndex = -1;
@@ -818,6 +1011,10 @@
                     });
                     div.addEventListener('mouseenter', function () {
                         setActive(idx);
+                        previewHighlight(item);
+                    });
+                    div.addEventListener('mouseleave', function () {
+                        previewUnhighlight();
                     });
                 });
                 results.classList.add('open');
@@ -836,6 +1033,7 @@
             function selectResult(item) {
                 clearResults();
                 input.value = item.title;
+                updateClearBtn();
 
                 // Ensure layer is visible
                 if (!map.hasLayer(item.def._leafletLayer)) {
@@ -867,9 +1065,17 @@
                 input.blur();
             }
 
+            clearBtn.addEventListener('click', function () {
+                input.value = '';
+                clearResults();
+                updateClearBtn();
+                input.focus();
+            });
+
             var debounceTimer;
             input.addEventListener('input', function () {
                 clearTimeout(debounceTimer);
+                updateClearBtn();
                 var query = input.value.trim().toLowerCase();
                 if (query.length < 2) {
                     clearResults();
@@ -918,17 +1124,83 @@
         }
     });
 
-    var baseLayerPicker = new BaseLayerPicker(baseLayers);
-    baseLayerPicker.addTo(map);
+    // Bottom bar: base layer picker + context layer picker + unified zoom — all side by side
+    var BottomBarControl = L.Control.extend({
+        options: { position: 'bottomleft' },
+        onAdd: function (map) {
+            var container = L.DomUtil.create('div', 'bottom-pickers-bar');
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+
+            // Base layer picker
+            var blp = new BaseLayerPicker(baseLayers);
+            blp._map = map;
+            container.appendChild(blp.onAdd(map));
+
+            // Context layer picker
+            var clp = new ContextLayerPicker(contextLayers);
+            clp._map = map;
+            container.appendChild(clp.onAdd(map));
+
+            // Search control
+            var sc = new SearchControl();
+            sc._map = map;
+            container.appendChild(sc.onAdd(map));
+
+            // Unified zoom (zoom in + full extent + zoom out)
+            var zoomBar = L.DomUtil.create('div', 'leaflet-bar leaflet-control-zoom unified-zoom', container);
+
+            var zoomIn = L.DomUtil.create('a', 'leaflet-control-zoom-in', zoomBar);
+            zoomIn.href = '#';
+            zoomIn.title = 'Zoom avant';
+            zoomIn.setAttribute('role', 'button');
+            zoomIn.setAttribute('aria-label', 'Zoom avant');
+            zoomIn.innerHTML = '+';
+
+            var fullExtent = L.DomUtil.create('a', 'leaflet-control-full-extent', zoomBar);
+            fullExtent.href = '#';
+            fullExtent.title = 'Vue d\'ensemble';
+            fullExtent.setAttribute('role', 'button');
+            fullExtent.setAttribute('aria-label', 'Vue d\'ensemble');
+            fullExtent.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+
+            var zoomOut = L.DomUtil.create('a', 'leaflet-control-zoom-out', zoomBar);
+            zoomOut.href = '#';
+            zoomOut.title = 'Zoom arrière';
+            zoomOut.setAttribute('role', 'button');
+            zoomOut.setAttribute('aria-label', 'Zoom arrière');
+            zoomOut.innerHTML = '&#x2212;';
+
+            L.DomEvent.on(zoomIn, 'click', function (e) {
+                L.DomEvent.preventDefault(e);
+                map.zoomIn();
+            });
+            L.DomEvent.on(fullExtent, 'click', function (e) {
+                L.DomEvent.preventDefault(e);
+                if (boundsGroup.getBounds().isValid()) {
+                    map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+                } else {
+                    map.setView([50.35, 2.8], 10);
+                }
+            });
+            L.DomEvent.on(zoomOut, 'click', function (e) {
+                L.DomEvent.preventDefault(e);
+                map.zoomOut();
+            });
+
+            return container;
+        }
+    });
+    new BottomBarControl().addTo(map);
 
     var overlayControl = new GroupedLayerControl(layerGroups);
-
-    var searchControl = new SearchControl();
-    searchControl.addTo(map);
 
     var boundsGroup = L.featureGroup();
     var loadedCount = 0;
     var bassinMask = null; // Inverted mask layer for bassin-minier
+
+    // Loading overlay
+    var loadingOverlay = document.getElementById('loading-overlay');
 
     // Dedicated pane for bassin-minier so it renders below other overlays
     var bassinPane = map.createPane('bassinPane');
@@ -957,6 +1229,28 @@
         });
     }
 
+    // Track currently highlighted layer for hover reset
+    var hoveredLayer = null;
+
+    function onLayerLoaded() {
+        loadedCount++;
+        if (loadedCount === allLayerDefs.length) {
+            overlayControl.addTo(map);
+            buildSearchIndex();
+            if (boundsGroup.getBounds().isValid()) {
+                map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+            }
+            // Dismiss loading overlay
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('fade-out');
+                setTimeout(function () {
+                    loadingOverlay.style.display = 'none';
+                    map.invalidateSize();
+                }, 400);
+            }
+        }
+    }
+
     allLayerDefs.forEach(function (def) {
         fetch(def.file)
             .then(function (response) {
@@ -975,6 +1269,40 @@
                                 showDetail(builder(feature.properties));
                             });
                         }
+
+                        // Hover tooltip
+                        var ttFn = tooltipText[def.id];
+                        if (ttFn) {
+                            var text = ttFn(feature.properties);
+                            if (text) {
+                                layer.bindTooltip(text, {
+                                    className: 'feature-tooltip',
+                                    sticky: true,
+                                    direction: 'top',
+                                    offset: [0, -10]
+                                });
+                            }
+                        }
+
+                        // Hover highlight
+                        layer.on('mouseover', function () {
+                            if (hoveredLayer && hoveredLayer !== layer && hoveredLayer.setStyle) {
+                                // reset previous
+                            }
+                            hoveredLayer = layer;
+                            if (layer.setStyle) {
+                                layer.setStyle(getHoverStyle(def.id));
+                            }
+                            if (layer.bringToFront && def.id !== 'bassin-minier' && def.id !== 'communes-mbm') {
+                                layer.bringToFront();
+                            }
+                        });
+                        layer.on('mouseout', function () {
+                            if (layer.setStyle) {
+                                layer.setStyle(styles[def.id]);
+                            }
+                            hoveredLayer = null;
+                        });
                     }
                 };
                 if (styles[def.id] && styles[def.id].radius) {
@@ -984,6 +1312,10 @@
                 }
                 var layer = L.geoJSON(geojson, layerOpts);
                 def._leafletLayer = layer;
+
+                // Update feature count in control
+                var featureCount = geojson.features ? geojson.features.length : 0;
+                def._featureCount = featureCount;
 
                 // Create inverted mask for bassin-minier
                 if (def.id === 'bassin-minier' && geojson.features && geojson.features[0]) {
@@ -998,25 +1330,21 @@
                 }
                 boundsGroup.addLayer(layer);
 
-                loadedCount++;
-                if (loadedCount === allLayerDefs.length) {
-                    overlayControl.addTo(map);
-                    buildSearchIndex();
-                    if (boundsGroup.getBounds().isValid()) {
-                        map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
-                    }
-                }
+                onLayerLoaded();
+
+                // Update count after control is added
+                setTimeout(function () {
+                    overlayControl.updateCount(def.id, featureCount);
+                }, 0);
             })
             .catch(function (err) {
                 console.warn('Failed to load ' + def.file + ':', err);
-                loadedCount++;
-                if (loadedCount === allLayerDefs.length) {
-                    overlayControl.addTo(map);
-                    buildSearchIndex();
-                    if (boundsGroup.getBounds().isValid()) {
-                        map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
-                    }
-                }
+                onLayerLoaded();
             });
     });
+
+    // Add drag handle for mobile bottom sheet
+    var dragHandle = document.createElement('div');
+    dragHandle.className = 'detail-drag-handle';
+    detailPanel.insertBefore(dragHandle, detailPanel.firstChild);
 })();
