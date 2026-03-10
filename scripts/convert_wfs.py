@@ -10,20 +10,167 @@ from pathlib import Path
 OUTPUT_DIR = Path(__file__).parent.parent / "site" / "data"
 
 # WFS sources: download GeoJSON directly from WFS endpoints
+WFS_BASE = (
+    "https://www.geo2france.fr/geoserver/mission_bassin_minier/ows"
+    "?service=WFS&version=1.1.0&request=GetFeature"
+    "&typeName=mission_bassin_minier:{layer}"
+    "&outputFormat=application/json&srsName=EPSG:4326"
+)
+
 WFS_SOURCES = [
     {
-        "url": (
-            "https://www.geo2france.fr/geoserver/mission_bassin_minier/ows"
-            "?service=WFS&version=1.1.0&request=GetFeature"
-            "&typeName=mission_bassin_minier:bassin_minier"
-            "&outputFormat=application/json&srsName=EPSG:4326"
-        ),
+        "url": WFS_BASE.format(layer="bassin_minier"),
         "output": "bassin-minier.geojson",
         "keep_columns": ["nom", "surf_km", "pop"],
         "rename": {
             "nom": "nom",
             "surf_km": "surface_km2",
             "pop": "population",
+        },
+    },
+    {
+        "url": WFS_BASE.format(layer="communes_mbm"),
+        "output": "communes-mbm.geojson",
+        "keep_columns": ["insee_com", "nom_min", "statut", "pop_tot", "surf_km2"],
+        "rename": {
+            "insee_com": "insee",
+            "nom_min": "nom",
+            "statut": "statut",
+            "pop_tot": "population",
+            "surf_km2": "surface_km2",
+        },
+    },
+    {
+        "url": WFS_BASE.format(layer="bien_inscrit_equipements_collectifs"),
+        "output": "equipements-collectifs.geojson",
+        "keep_columns": [
+            "ID_UNESCO", "element", "objet", "NOM", "COMMUNE1", "COMMUNE2",
+            "Typologie", "COMPAGNIE", "PERIODE_DEBUT_EDIFICATION", "PROPRIETAIRE",
+            "PROTECTION_CODE_PAT_ENVT",
+        ],
+        "rename": {
+            "ID_UNESCO": "id_unesco",
+            "NOM": "nom",
+            "COMMUNE1": "commune_1",
+            "COMMUNE2": "commune_2",
+            "Typologie": "typologie",
+            "COMPAGNIE": "compagnie",
+            "PERIODE_DEBUT_EDIFICATION": "periode",
+            "PROPRIETAIRE": "proprietaire",
+            "PROTECTION_CODE_PAT_ENVT": "protection",
+            "element": "element",
+            "objet": "objet",
+        },
+    },
+    {
+        "url": WFS_BASE.format(layer="bien_inscrit_equipements_extraction"),
+        "output": "equipements-extraction.geojson",
+        "keep_columns": [
+            "ID_UNESCO", "element", "objet", "NOM", "COMMUNE1", "COMMUNE2",
+            "Typologie", "COMPAGNIE", "PERIODE_DEBUT_EDIFICATION", "PROPRIETAIRE",
+            "PROTECTION_CODE_PAT_ENVT",
+        ],
+        "rename": {
+            "ID_UNESCO": "id_unesco",
+            "NOM": "nom",
+            "COMMUNE1": "commune_1",
+            "COMMUNE2": "commune_2",
+            "Typologie": "typologie",
+            "COMPAGNIE": "compagnie",
+            "PERIODE_DEBUT_EDIFICATION": "periode",
+            "PROPRIETAIRE": "proprietaire",
+            "PROTECTION_CODE_PAT_ENVT": "protection",
+            "element": "element",
+            "objet": "objet",
+        },
+    },
+    {
+        "url": WFS_BASE.format(layer="zt_cavaliers"),
+        "output": "zt-cavaliers.geojson",
+        "keep_columns": ["ID_NTRONCO", "Appartenan", "Commune1", "Commune2", "Commune3", "Commune4"],
+        "rename": {
+            "ID_NTRONCO": "id_troncon",
+            "Appartenan": "nom",
+            "Commune1": "commune_1",
+            "Commune2": "commune_2",
+            "Commune3": "commune_3",
+            "Commune4": "commune_4",
+        },
+    },
+    {
+        "url": WFS_BASE.format(layer="zt_cites_minires"),
+        "output": "zt-cites-minieres.geojson",
+        "keep_columns": [
+            "ID_LSM", "NOM_CITE", "NOM_CITE_2", "COMMUNE", "COMMUNE_2", "COMMUNE_3",
+            "type", "Compagnie", "interet", "PROPRIETAIRE",
+        ],
+        "rename": {
+            "ID_LSM": "id_lsm",
+            "NOM_CITE": "nom",
+            "NOM_CITE_2": "nom_2",
+            "COMMUNE": "commune_1",
+            "COMMUNE_2": "commune_2",
+            "COMMUNE_3": "commune_3",
+            "type": "type",
+            "Compagnie": "compagnie",
+            "interet": "interet",
+            "PROPRIETAIRE": "proprietaire",
+        },
+    },
+    {
+        "url": WFS_BASE.format(layer="zt_espaces_neonaturels"),
+        "output": "zt-espaces-neonaturels.geojson",
+        "keep_columns": ["ID", "NOM", "COMMUNE1", "COMMUNE2", "COMMUNE3"],
+        "rename": {
+            "ID": "id",
+            "NOM": "nom",
+            "COMMUNE1": "commune_1",
+            "COMMUNE2": "commune_2",
+            "COMMUNE3": "commune_3",
+        },
+    },
+    {
+        "url": WFS_BASE.format(layer="zt_terrils"),
+        "output": "zt-terrils.geojson",
+        "keep_columns": ["ID", "NOM", "NOM_USUEL", "COMMUNE1", "COMMUNE2", "COMMUNE3", "FORME_2023"],
+        "rename": {
+            "ID": "id",
+            "NOM": "nom",
+            "NOM_USUEL": "nom_usuel",
+            "COMMUNE1": "commune_1",
+            "COMMUNE2": "commune_2",
+            "COMMUNE3": "commune_3",
+            "FORME_2023": "forme",
+        },
+    },
+    {
+        "url": WFS_BASE.format(layer="zt_parvis_agricoles"),
+        "output": "zt-parvis-agricoles.geojson",
+        "keep_columns": ["id", "QUALI_VUE", "VUE_SUR"],
+        "rename": {
+            "id": "id",
+            "QUALI_VUE": "qualite_vue",
+            "VUE_SUR": "vue_sur",
+        },
+    },
+    {
+        "url": WFS_BASE.format(layer="cites_erbm"),
+        "output": "cites-erbm.geojson",
+        "keep_columns": [
+            "ID_LSM", "NOM", "NOM2", "COMMUNE1", "COMMUNE2", "COMMUNE3",
+            "type", "Compagnie", "INTERET", "PROPRIETAIRE",
+        ],
+        "rename": {
+            "ID_LSM": "id_lsm",
+            "NOM": "nom",
+            "NOM2": "nom_2",
+            "COMMUNE1": "commune_1",
+            "COMMUNE2": "commune_2",
+            "COMMUNE3": "commune_3",
+            "type": "type",
+            "Compagnie": "compagnie",
+            "INTERET": "interet",
+            "PROPRIETAIRE": "proprietaire",
         },
     },
 ]

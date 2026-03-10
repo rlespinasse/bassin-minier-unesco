@@ -56,7 +56,7 @@ dev: convert serve
 
 # --- Quality ---
 
-# Check that all 9 GeoJSON files exist in site/data/
+# Check that all 18 GeoJSON files exist in site/data/
 [group('quality')]
 check:
     #!/usr/bin/env bash
@@ -71,6 +71,15 @@ check:
         espace-neonaturel.geojson
         terrils.geojson
         puits-de-mines.geojson
+        communes-mbm.geojson
+        equipements-collectifs.geojson
+        equipements-extraction.geojson
+        zt-cavaliers.geojson
+        zt-cites-minieres.geojson
+        zt-espaces-neonaturels.geojson
+        zt-terrils.geojson
+        zt-parvis-agricoles.geojson
+        cites-erbm.geojson
     )
     missing=0
     for f in "${files[@]}"; do
