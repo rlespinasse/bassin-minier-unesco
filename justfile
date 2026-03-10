@@ -14,7 +14,7 @@ default:
 # Install Python dependencies (geopandas)
 [group('setup')]
 install:
-    pip install geopandas
+    uv pip install geopandas
 
 # --- Data ---
 

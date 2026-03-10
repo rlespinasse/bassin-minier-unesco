@@ -41,23 +41,41 @@ Ce traitement est realise par le script `scripts/enrich_geojson.py` et reduit le
 
 ## Prerequis
 
-- Python 3.8+ avec [GeoPandas](https://geopandas.org/) (`pip install geopandas`)
-- Un navigateur web moderne
+- [mise](https://mise.jdx.dev/) (installe automatiquement Python et just via `mise install`)
+- Un navigateur web moderne (pour consulter la carte)
 
-## Conversion des donnees
-
-Le script telecharge automatiquement les donnees depuis [data.gouv.fr](https://www.data.gouv.fr/), les convertit et genere les fichiers GeoJSON dans `site/data/`.
+## Installation
 
 ```bash
-pip install geopandas
-python scripts/convert_shapefiles.py
+mise install
+just install
+```
+
+## Generation des donnees
+
+Telecharge les sources (shapefiles data.gouv.fr, couches WFS geo2france.fr), les convertit en GeoJSON, puis fusionne les jeux de donnees qui se recoupent :
+
+```bash
+just convert
+```
+
+Pour reconstruire depuis zero :
+
+```bash
+just rebuild
+```
+
+Pour verifier que les fichiers generes sont presents et valides :
+
+```bash
+just check
+just validate
 ```
 
 ## Developpement local
 
 ```bash
-cd site
-python -m http.server 8000
+just serve
 ```
 
 Ouvrir <http://localhost:8000> dans un navigateur.
@@ -71,6 +89,8 @@ Le site est deployable via GitHub Pages depuis le dossier `site/`.
 - [Leaflet](https://leafletjs.com/) v1.9.4 (CDN) pour la carte interactive
 - [OpenStreetMap](https://www.openstreetmap.org/) pour le fond de carte
 - HTML/CSS/JS vanilla (aucun build tool)
+- [mise](https://mise.jdx.dev/) pour la gestion des outils (Python, just)
+- [just](https://just.systems/) pour l'orchestration des taches
 - [GeoPandas](https://geopandas.org/) pour la conversion des shapefiles
 
 ## Licence
