@@ -149,56 +149,74 @@
     var detailBuilders = {
         'bassin-minier': function (p) {
             return buildDetail(p.nom || 'Bassin minier', [
-                { label: 'Caracteristiques', rows: [
-                    p.surface_km2 && ['Surface', p.surface_km2 + ' km\u00b2'],
-                    p.population && ['Population', p.population.toLocaleString('fr-FR')]
-                ]}
+                {
+                    label: 'Caracteristiques', rows: [
+                        p.surface_km2 && ['Surface', p.surface_km2 + ' km\u00b2'],
+                        p.population && ['Population', p.population.toLocaleString('fr-FR')]
+                    ]
+                }
             ]);
         },
         'bien-inscrit': function (p) {
             return buildDetail(p.nom || 'Bien inscrit UNESCO', [
-                { label: 'Identification', rows: [
-                    p.section && ['Section', p.section],
-                    p.no_element && ['Element', p.no_element]
-                ]},
-                { label: 'Caracteristiques', rows: [
-                    p.surface_ha && ['Surface', p.surface_ha + ' ha']
-                ]}
+                {
+                    label: 'Identification', rows: [
+                        p.section && ['Section', p.section],
+                        p.no_element && ['Element', p.no_element]
+                    ]
+                },
+                {
+                    label: 'Caracteristiques', rows: [
+                        p.surface_ha && ['Surface', p.surface_ha + ' ha']
+                    ]
+                }
             ]);
         },
         'zone-tampon': function (p) {
             return buildDetail('Zone tampon', [
-                { label: 'Identification', rows: [
-                    p.id && ['ID', p.id]
-                ]},
-                { label: 'Caracteristiques', rows: [
-                    p.surface_ha && ['Surface', p.surface_ha + ' ha']
-                ]}
+                {
+                    label: 'Identification', rows: [
+                        p.id && ['ID', p.id]
+                    ]
+                },
+                {
+                    label: 'Caracteristiques', rows: [
+                        p.surface_ha && ['Surface', p.surface_ha + ' ha']
+                    ]
+                }
             ]);
         },
         'cites-minieres': function (p) {
             return buildDetail(p.nom || 'Cite miniere', [
-                { label: 'Localisation', rows: [
-                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
-                ]},
-                { label: 'Identification', rows: [
-                    p.type && ['Type', p.type],
-                    p.compagnie && ['Compagnie', p.compagnie],
-                    p.interet && ['Interet', p.interet],
-                    p.id_unesco && ['ID UNESCO', p.id_unesco]
-                ]},
+                {
+                    label: 'Localisation', rows: [
+                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
+                    ]
+                },
+                {
+                    label: 'Identification', rows: [
+                        p.type && ['Type', p.type],
+                        p.compagnie && ['Compagnie', p.compagnie],
+                        p.interet && ['Interet', p.interet],
+                        p.id_unesco && ['ID UNESCO', p.id_unesco]
+                    ]
+                },
                 { label: 'Protection', rows: mhRows(p) }
             ]);
         },
         'batis': function (p) {
             return buildDetail(p.denomination || 'Bati minier', [
-                { label: 'Localisation', rows: [
-                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
-                ]},
-                { label: 'Identification', rows: [
-                    p.typologie && ['Typologie', p.typologie],
-                    p.id_unesco && ['ID UNESCO', p.id_unesco]
-                ]},
+                {
+                    label: 'Localisation', rows: [
+                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
+                    ]
+                },
+                {
+                    label: 'Identification', rows: [
+                        p.typologie && ['Typologie', p.typologie],
+                        p.id_unesco && ['ID UNESCO', p.id_unesco]
+                    ]
+                },
                 { label: 'Protection', rows: mhRows(p) }
             ]);
         },
@@ -208,41 +226,57 @@
                 p.commune_4, p.commune_5, p.commune_6
             ]);
             return buildDetail('Cavalier minier', [
-                { label: 'Localisation', rows: [
-                    communes && ['Communes', communes]
-                ]},
-                { label: 'Caracteristiques', rows: [
-                    p.longueur_m && ['Longueur', Math.round(p.longueur_m) + ' m']
-                ]},
-                { label: 'Identification', rows: [
-                    p.id_unesco && ['ID UNESCO', p.id_unesco]
-                ]}
+                {
+                    label: 'Localisation', rows: [
+                        communes && ['Communes', communes]
+                    ]
+                },
+                {
+                    label: 'Caracteristiques', rows: [
+                        p.longueur_m && ['Longueur', Math.round(p.longueur_m) + ' m']
+                    ]
+                },
+                {
+                    label: 'Identification', rows: [
+                        p.id_unesco && ['ID UNESCO', p.id_unesco]
+                    ]
+                }
             ]);
         },
         'espace-neonaturel': function (p) {
             return buildDetail(p.nom || 'Espace neo-naturel', [
-                { label: 'Localisation', rows: [
-                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
-                ]},
-                { label: 'Identification', rows: [
-                    p.id_unesco && ['ID UNESCO', p.id_unesco]
-                ]}
+                {
+                    label: 'Localisation', rows: [
+                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
+                    ]
+                },
+                {
+                    label: 'Identification', rows: [
+                        p.id_unesco && ['ID UNESCO', p.id_unesco]
+                    ]
+                }
             ]);
         },
         'terrils': function (p) {
             return buildDetail(p.nom || 'Terril', [
-                { label: 'Localisation', rows: [
-                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
-                ]},
-                { label: 'Identification', rows: [
-                    p.no_terril && ['N\u00b0 Terril', p.no_terril],
-                    p.compagnie && ['Compagnie', p.compagnie],
-                    p.groupe && ['Groupe', p.groupe],
-                    p.id_unesco && ['ID UNESCO', p.id_unesco]
-                ]},
-                { label: 'Caracteristiques', rows: [
-                    p.forme && ['Forme', p.forme]
-                ]}
+                {
+                    label: 'Localisation', rows: [
+                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
+                    ]
+                },
+                {
+                    label: 'Identification', rows: [
+                        p.no_terril && ['N\u00b0 Terril', p.no_terril],
+                        p.compagnie && ['Compagnie', p.compagnie],
+                        p.groupe && ['Groupe', p.groupe],
+                        p.id_unesco && ['ID UNESCO', p.id_unesco]
+                    ]
+                },
+                {
+                    label: 'Caracteristiques', rows: [
+                        p.forme && ['Forme', p.forme]
+                    ]
+                }
             ]);
         },
         'puits-de-mines': function (p) {
@@ -252,25 +286,35 @@
                 if (p.fosse_alias) title += ' (' + p.fosse_alias + ')';
             }
             return buildDetail(title, [
-                { label: 'Localisation', rows: [
-                    p.commune && ['Commune', p.commune],
-                    p.concession && ['Concession', p.concession]
-                ]},
-                { label: 'Identification', rows: [
-                    p.puits && ['Puits', p.puits],
-                    p.compagnie && ['Compagnie', p.compagnie]
-                ]},
-                { label: 'Caracteristiques', rows: [
-                    p.profondeur && ['Profondeur', Math.round(p.profondeur) + ' m'],
-                    p.cote && ['Cote', Math.round(p.cote) + ' m']
-                ]},
-                { label: 'Historique', rows: [
-                    p.creusement && ['Creusement', p.creusement],
-                    p.fermeture && ['Fermeture', p.fermeture]
-                ]},
-                { label: 'Liens', rows: [
-                    p.brgm && ['Fiche BRGM', rawHtml('<a href="' + encodeURI(p.brgm) + '" target="_blank" rel="noopener">Voir</a>')]
-                ]}
+                {
+                    label: 'Localisation', rows: [
+                        p.commune && ['Commune', p.commune],
+                        p.concession && ['Concession', p.concession]
+                    ]
+                },
+                {
+                    label: 'Identification', rows: [
+                        p.puits && ['Puits', p.puits],
+                        p.compagnie && ['Compagnie', p.compagnie]
+                    ]
+                },
+                {
+                    label: 'Caracteristiques', rows: [
+                        p.profondeur && ['Profondeur', Math.round(p.profondeur) + ' m'],
+                        p.cote && ['Cote', Math.round(p.cote) + ' m']
+                    ]
+                },
+                {
+                    label: 'Historique', rows: [
+                        p.creusement && ['Creusement', p.creusement],
+                        p.fermeture && ['Fermeture', p.fermeture]
+                    ]
+                },
+                {
+                    label: 'Liens', rows: [
+                        p.brgm && ['Fiche BRGM', rawHtml('<a href="' + encodeURI(p.brgm) + '" target="_blank" rel="noopener">Voir</a>')]
+                    ]
+                }
             ]);
         }
     };
@@ -312,21 +356,27 @@
     // Layer definitions grouped (render order: first group/layer = bottom)
     // active: whether the layer is visible by default
     var layerGroups = [
-        { group: 'Patrimoine mondial UNESCO', layers: [
-            { id: 'batis', label: 'Batis', file: 'data/batis.geojson', active: true },
-            { id: 'bien-inscrit', label: 'Bien inscrit', file: 'data/bien-inscrit.geojson', active: true },
-            { id: 'cavaliers', label: 'Cavaliers', file: 'data/cavaliers.geojson', active: true },
-            { id: 'cites-minieres', label: 'Cites minieres', file: 'data/cites-minieres.geojson', active: true },
-            { id: 'espace-neonaturel', label: 'Espaces neo-naturels', file: 'data/espace-neonaturel.geojson', active: true },
-            { id: 'terrils', label: 'Terrils', file: 'data/terrils.geojson', active: true },
-            { id: 'zone-tampon', label: 'Zone tampon', file: 'data/zone-tampon.geojson', active: true }
-        ]},
-        { group: 'Inventaire minier', layers: [
-            { id: 'puits-de-mines', label: 'Puits de mines', file: 'data/puits-de-mines.geojson', active: false }
-        ]},
-        { group: 'Perimetre', layers: [
-            { id: 'bassin-minier', label: 'Bassin minier (ERBM)', file: 'data/bassin-minier.geojson', active: true }
-        ]}
+        {
+            group: 'Patrimoine mondial UNESCO', layers: [
+                { id: 'batis', label: 'Batis', file: 'data/batis.geojson', active: true },
+                { id: 'bien-inscrit', label: 'Bien inscrit', file: 'data/bien-inscrit.geojson', active: true },
+                { id: 'cavaliers', label: 'Cavaliers', file: 'data/cavaliers.geojson', active: true },
+                { id: 'cites-minieres', label: 'Cites minieres', file: 'data/cites-minieres.geojson', active: true },
+                { id: 'espace-neonaturel', label: 'Espaces neo-naturels', file: 'data/espace-neonaturel.geojson', active: true },
+                { id: 'terrils', label: 'Terrils', file: 'data/terrils.geojson', active: true },
+                { id: 'zone-tampon', label: 'Zone tampon', file: 'data/zone-tampon.geojson', active: true }
+            ]
+        },
+        {
+            group: 'Inventaire minier', layers: [
+                { id: 'puits-de-mines', label: 'Puits de mines', file: 'data/puits-de-mines.geojson', active: false }
+            ]
+        },
+        {
+            group: 'Perimetre', layers: [
+                { id: 'bassin-minier', label: 'Bassin minier (ERBM)', file: 'data/bassin-minier.geojson', active: false }
+            ]
+        }
     ];
 
     // Flatten for loading
@@ -488,10 +538,196 @@
         }
     });
 
+    // Search control
+    var searchableProps = {
+        'bassin-minier': { title: function (p) { return p.nom; }, meta: function () { return 'Perimetre'; }, text: ['nom'] },
+        'bien-inscrit': { title: function (p) { return p.nom; }, meta: function (p) { return 'Bien inscrit' + (p.section ? ' - ' + p.section : ''); }, text: ['nom', 'section'] },
+        'zone-tampon': { title: function (p) { return 'Zone tampon ' + (p.id || ''); }, meta: function () { return 'Zone tampon'; }, text: ['id'] },
+        'cites-minieres': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Cite miniere'; }, text: ['nom', 'commune_1', 'commune_2', 'compagnie'] },
+        'batis': { title: function (p) { return p.denomination; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Bati minier'; }, text: ['denomination', 'commune_1', 'commune_2', 'typologie'] },
+        'cavaliers': { title: function (p) { return 'Cavalier' + (p.id_unesco ? ' ' + p.id_unesco : ''); }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2, p.commune_3]) || 'Cavalier'; }, text: ['commune_1', 'commune_2', 'commune_3', 'commune_4', 'commune_5', 'commune_6', 'id_unesco'] },
+        'espace-neonaturel': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Espace neo-naturel'; }, text: ['nom', 'commune_1', 'commune_2'] },
+        'terrils': { title: function (p) { return p.nom || 'Terril ' + (p.no_terril || ''); }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Terril'; }, text: ['nom', 'no_terril', 'commune_1', 'commune_2', 'compagnie'] },
+        'puits-de-mines': { title: function (p) { return p.fosse ? 'Fosse ' + p.fosse + (p.fosse_alias ? ' (' + p.fosse_alias + ')' : '') : 'Puits'; }, meta: function (p) { return p.commune || 'Puits de mine'; }, text: ['fosse', 'fosse_alias', 'puits', 'commune', 'compagnie', 'concession'] }
+    };
+
+    // Build search index after all layers loaded
+    var searchIndex = [];
+
+    function buildSearchIndex() {
+        allLayerDefs.forEach(function (def) {
+            if (!def._leafletLayer) return;
+            var config = searchableProps[def.id];
+            if (!config) return;
+            def._leafletLayer.eachLayer(function (layer) {
+                var props = layer.feature.properties;
+                var title = config.title(props) || '';
+                if (!title) return;
+                var searchText = config.text.map(function (key) {
+                    return props[key] ? String(props[key]) : '';
+                }).join(' ').toLowerCase();
+                searchIndex.push({
+                    title: title,
+                    meta: config.meta(props),
+                    searchText: searchText,
+                    layer: layer,
+                    layerId: def.id,
+                    def: def
+                });
+            });
+        });
+    }
+
+    var SearchControl = L.Control.extend({
+        options: { position: 'topleft' },
+        onAdd: function () {
+            var container = L.DomUtil.create('div', 'search-control');
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+
+            var input = L.DomUtil.create('input', '', container);
+            input.type = 'text';
+            input.placeholder = 'Rechercher un lieu...';
+            input.setAttribute('aria-label', 'Rechercher');
+
+            var results = L.DomUtil.create('div', 'search-results', container);
+            var activeIndex = -1;
+
+            function clearResults() {
+                results.innerHTML = '';
+                results.classList.remove('open');
+                activeIndex = -1;
+            }
+
+            function showResults(items) {
+                results.innerHTML = '';
+                activeIndex = -1;
+                if (items.length === 0) {
+                    if (input.value.trim().length >= 2) {
+                        results.innerHTML = '<div class="search-no-results">Aucun resultat</div>';
+                        results.classList.add('open');
+                    } else {
+                        results.classList.remove('open');
+                    }
+                    return;
+                }
+                items.forEach(function (item, idx) {
+                    var div = L.DomUtil.create('div', 'search-result-item', results);
+                    var color = styles[item.layerId].fillColor || styles[item.layerId].color;
+                    div.innerHTML = '<div class="search-result-title"><span class="search-result-layer" style="background:' + color + '"></span>' + escapeHtml(item.title) + '</div>'
+                        + '<div class="search-result-meta">' + escapeHtml(item.meta) + '</div>';
+                    div.addEventListener('click', function () {
+                        selectResult(item);
+                    });
+                    div.addEventListener('mouseenter', function () {
+                        setActive(idx);
+                    });
+                });
+                results.classList.add('open');
+            }
+
+            function setActive(idx) {
+                var items = results.querySelectorAll('.search-result-item');
+                items.forEach(function (el) { el.classList.remove('active'); });
+                activeIndex = idx;
+                if (idx >= 0 && idx < items.length) {
+                    items[idx].classList.add('active');
+                    items[idx].scrollIntoView({ block: 'nearest' });
+                }
+            }
+
+            function selectResult(item) {
+                clearResults();
+                input.value = item.title;
+
+                // Ensure layer is visible
+                if (!map.hasLayer(item.def._leafletLayer)) {
+                    item.def._leafletLayer.addTo(map);
+                }
+
+                // Zoom to feature
+                if (item.layer.getBounds) {
+                    map.fitBounds(item.layer.getBounds(), { padding: [50, 50], maxZoom: 16 });
+                } else if (item.layer.getLatLng) {
+                    map.setView(item.layer.getLatLng(), 16);
+                }
+
+                // Open detail panel
+                var builder = detailBuilders[item.layerId];
+                if (builder) {
+                    showDetail(builder(item.layer.feature.properties));
+                }
+
+                // Highlight briefly
+                if (item.layer.setStyle) {
+                    var origStyle = styles[item.layerId];
+                    item.layer.setStyle({ weight: 4, fillOpacity: 0.6 });
+                    setTimeout(function () {
+                        item.layer.setStyle(origStyle);
+                    }, 2000);
+                }
+
+                input.blur();
+            }
+
+            var debounceTimer;
+            input.addEventListener('input', function () {
+                clearTimeout(debounceTimer);
+                var query = input.value.trim().toLowerCase();
+                if (query.length < 2) {
+                    clearResults();
+                    return;
+                }
+                debounceTimer = setTimeout(function () {
+                    var terms = query.split(/\s+/);
+                    var matches = searchIndex.filter(function (entry) {
+                        return terms.every(function (term) {
+                            return entry.searchText.indexOf(term) !== -1 || entry.title.toLowerCase().indexOf(term) !== -1;
+                        });
+                    }).slice(0, 20);
+                    showResults(matches);
+                }, 150);
+            });
+
+            input.addEventListener('keydown', function (e) {
+                var items = results.querySelectorAll('.search-result-item');
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setActive(Math.min(activeIndex + 1, items.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setActive(Math.max(activeIndex - 1, 0));
+                } else if (e.key === 'Enter' && activeIndex >= 0) {
+                    e.preventDefault();
+                    var filtered = searchIndex.filter(function (entry) {
+                        var terms = input.value.trim().toLowerCase().split(/\s+/);
+                        return terms.every(function (term) {
+                            return entry.searchText.indexOf(term) !== -1 || entry.title.toLowerCase().indexOf(term) !== -1;
+                        });
+                    }).slice(0, 20);
+                    if (filtered[activeIndex]) selectResult(filtered[activeIndex]);
+                } else if (e.key === 'Escape') {
+                    clearResults();
+                    input.blur();
+                }
+            });
+
+            // Close results when clicking elsewhere
+            map.on('click', function () {
+                clearResults();
+            });
+
+            return container;
+        }
+    });
+
     var baseLayerPicker = new BaseLayerPicker(baseLayers);
     baseLayerPicker.addTo(map);
 
     var overlayControl = new GroupedLayerControl(layerGroups);
+
+    var searchControl = new SearchControl();
+    searchControl.addTo(map);
 
     var boundsGroup = L.featureGroup();
     var loadedCount = 0;
@@ -532,6 +768,7 @@
                 loadedCount++;
                 if (loadedCount === allLayerDefs.length) {
                     overlayControl.addTo(map);
+                    buildSearchIndex();
                     if (boundsGroup.getBounds().isValid()) {
                         map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
                     }
@@ -542,6 +779,7 @@
                 loadedCount++;
                 if (loadedCount === allLayerDefs.length) {
                     overlayControl.addTo(map);
+                    buildSearchIndex();
                     if (boundsGroup.getBounds().isValid()) {
                         map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
                     }

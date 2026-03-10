@@ -1,0 +1,96 @@
+/* Search control */
+.search-control {
+    position: relative;
+}
+
+.search-control input {
+    width: 260px;
+    padding: 0.5rem 0.75rem 0.5rem 2rem;
+    border: 2px solid rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 0.55rem center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.search-control input:focus {
+    border-color: #0072BC;
+    box-shadow: 0 2px 8px rgba(0, 114, 188, 0.25);
+}
+
+.search-control input::placeholder {
+    color: #aaa;
+}
+
+.search-results {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.search-results.open {
+    display: block;
+}
+
+.search-result-item {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover,
+.search-result-item.active {
+    background: #e8f4fd;
+}
+
+.search-result-title {
+    font-weight: 600;
+    color: #333;
+}
+
+.search-result-meta {
+    color: #888;
+    font-size: 0.7rem;
+    margin-top: 0.1rem;
+}
+
+.search-result-layer {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.3rem;
+    vertical-align: middle;
+}
+
+.search-no-results {
+    padding: 0.75rem;
+    color: #888;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .search-control input {
+        width: 200px;
+        font-size: 0.8rem;
+    }
+}
