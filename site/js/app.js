@@ -1236,6 +1236,12 @@
         loadedCount++;
         if (loadedCount === allLayerDefs.length) {
             overlayControl.addTo(map);
+            // Update all feature counts now that the control is in the DOM
+            allLayerDefs.forEach(function (d) {
+                if (d._featureCount !== undefined) {
+                    overlayControl.updateCount(d.id, d._featureCount);
+                }
+            });
             buildSearchIndex();
             if (boundsGroup.getBounds().isValid()) {
                 map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
@@ -1331,11 +1337,6 @@
                 boundsGroup.addLayer(layer);
 
                 onLayerLoaded();
-
-                // Update count after control is added
-                setTimeout(function () {
-                    overlayControl.updateCount(def.id, featureCount);
-                }, 0);
             })
             .catch(function (err) {
                 console.warn('Failed to load ' + def.file + ':', err);
