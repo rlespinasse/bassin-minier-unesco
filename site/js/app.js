@@ -206,6 +206,10 @@
     var detailClose = document.getElementById('detail-close');
 
     function showDetail(html) {
+        // Mobile: close layers drawer (mutual exclusion)
+        if (window.innerWidth <= 600 && layersDrawer && layersDrawer.isOpen()) {
+            layersDrawer.close();
+        }
         detailContent.innerHTML = html;
         detailPanel.classList.add('open');
         map.invalidateSize();
@@ -219,11 +223,20 @@
     detailClose.addEventListener('click', hideDetail);
 
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') hideDetail();
+        if (e.key === 'Escape') {
+            if (layersDrawer && layersDrawer.isOpen()) {
+                layersDrawer.close();
+            } else {
+                hideDetail();
+            }
+        }
     });
 
     map.on('click', function () {
         hideDetail();
+        if (layersDrawer && layersDrawer.isOpen()) {
+            layersDrawer.close();
+        }
     });
 
     // Helper: build MH protection rows
@@ -656,216 +669,137 @@
     });
     contextLayers.forEach(function (def) { allLayerDefs.push(def); });
 
-    // Base layer picker control (bottom-left button + popup panel)
-    var BaseLayerPicker = L.Control.extend({
-        options: { position: 'bottomleft' },
-        initialize: function (baseLayers, options) {
-            L.Util.setOptions(this, options);
-            this._baseLayers = baseLayers;
-        },
-        onAdd: function () {
-            var wrapper = L.DomUtil.create('div', 'base-layer-picker');
-            L.DomEvent.disableClickPropagation(wrapper);
-            L.DomEvent.disableScrollPropagation(wrapper);
-            var self = this;
+    // Determine geometry type for legend swatch
+    function getLayerGeomType(layerId) {
+        if (styles[layerId] && styles[layerId].radius) return 'point';
+        // Linear features (cavaliers, zt-cavaliers) — check for weight > 2 and no/low fill
+        if (layerId === 'cavaliers' || layerId === 'zt-cavaliers') return 'line';
+        return 'polygon';
+    }
 
-            // Toggle button — shows thumbnail of current base layer
-            var toggle = L.DomUtil.create('button', 'base-layer-toggle', wrapper);
-            toggle.type = 'button';
-            toggle.title = 'Fond de carte';
-            toggle.setAttribute('aria-label', 'Fond de carte');
+    // Create a legend swatch element
+    function createSwatch(layerId) {
+        var style = styles[layerId];
+        var geom = getLayerGeomType(layerId);
+        var color = style.fillColor || style.color;
+        var swatch = document.createElement('span');
+        swatch.className = 'layer-swatch';
 
-            var toggleThumb = L.DomUtil.create('img', 'base-layer-toggle-thumb', toggle);
-            var toggleLabel = L.DomUtil.create('span', 'base-layer-toggle-label', toggle);
-
-            // Set initial state from active layer
-            var activeName = Object.keys(this._baseLayers).find(function (n) {
-                return self._map.hasLayer(self._baseLayers[n]);
-            }) || Object.keys(this._baseLayers)[0];
-            toggleThumb.src = baseLayerThumbnails[activeName];
-            toggleThumb.alt = '';
-            toggleLabel.textContent = activeName;
-
-            // Popup panel
-            var panel = L.DomUtil.create('div', 'base-layer-panel', wrapper);
-            var panelTitle = L.DomUtil.create('div', 'base-layer-panel-title', panel);
-            panelTitle.textContent = 'Fond de carte';
-            var cardList = L.DomUtil.create('div', 'base-layer-cards', panel);
-
-            var baseCards = [];
-            Object.keys(this._baseLayers).forEach(function (name) {
-                var card = L.DomUtil.create('button', 'base-layer-card', cardList);
-                var isActive = name === activeName;
-                if (isActive) card.classList.add('active');
-                card.type = 'button';
-                card.setAttribute('aria-pressed', isActive);
-                if (baseLayerThumbnails[name]) {
-                    var thumb = L.DomUtil.create('img', 'base-layer-card-thumb', card);
-                    thumb.src = baseLayerThumbnails[name];
-                    thumb.alt = name;
-                    thumb.loading = 'lazy';
-                }
-                var cardLabel = L.DomUtil.create('span', 'base-layer-card-label', card);
-                cardLabel.textContent = name;
-                baseCards.push(card);
-                card.addEventListener('click', function () {
-                    Object.keys(self._baseLayers).forEach(function (n) {
-                        self._map.removeLayer(self._baseLayers[n]);
-                    });
-                    self._baseLayers[name].addTo(self._map);
-                    baseCards.forEach(function (c) {
-                        c.classList.remove('active');
-                        c.setAttribute('aria-pressed', 'false');
-                    });
-                    card.classList.add('active');
-                    card.setAttribute('aria-pressed', 'true');
-                    toggleThumb.src = baseLayerThumbnails[name];
-                    toggleLabel.textContent = name;
-                    panel.classList.remove('open');
-                    self._map.fire('baselayerchange', { name: name, layer: self._baseLayers[name] });
-                });
-            });
-
-            toggle.addEventListener('click', function () {
-                panel.classList.toggle('open');
-            });
-
-            // Close panel when clicking elsewhere on the map
-            this._map.on('click', function () {
-                panel.classList.remove('open');
-            });
-
-            return wrapper;
+        if (geom === 'point') {
+            swatch.classList.add('layer-swatch-point');
+            swatch.style.background = color;
+            swatch.style.border = '1.5px solid ' + style.color;
+        } else if (geom === 'line') {
+            swatch.classList.add('layer-swatch-line');
+            swatch.style.background = style.color;
+            if (style.dashArray) {
+                swatch.style.background = 'repeating-linear-gradient(90deg, ' + style.color + ' 0, ' + style.color + ' 4px, transparent 4px, transparent 7px)';
+            }
+        } else {
+            swatch.classList.add('layer-swatch-polygon');
+            swatch.style.background = color;
+            swatch.style.opacity = Math.max(style.fillOpacity || 0.3, 0.4);
+            swatch.style.border = '1.5px solid ' + style.color;
+            if (style.dashArray) {
+                swatch.style.borderStyle = 'dashed';
+            }
         }
-    });
+        return swatch;
+    }
 
-    // Context layer picker (bottom-left, next to base layer picker)
-    var ContextLayerPicker = L.Control.extend({
-        options: { position: 'bottomleft' },
-        initialize: function (layers, options) {
-            L.Util.setOptions(this, options);
-            this._layers = layers;
-        },
-        onAdd: function () {
-            var wrapper = L.DomUtil.create('div', 'context-layer-picker');
-            L.DomEvent.disableClickPropagation(wrapper);
-            L.DomEvent.disableScrollPropagation(wrapper);
-            var self = this;
+    // Zoom-to-layer icon SVG
+    var zoomToLayerSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>';
 
-            // Toggle button with layers icon
-            var toggle = L.DomUtil.create('button', 'context-layer-toggle', wrapper);
-            toggle.type = 'button';
-            toggle.title = 'Couches de contexte';
-            toggle.setAttribute('aria-label', 'Couches de contexte');
-            toggle.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
-
-            // Popup panel
-            var panel = L.DomUtil.create('div', 'context-layer-panel', wrapper);
-            var panelTitle = L.DomUtil.create('div', 'context-layer-panel-title', panel);
-            panelTitle.textContent = 'Couches de contexte';
-            var list = L.DomUtil.create('div', 'context-layer-list', panel);
-
-            this._layers.forEach(function (def) {
-                var item = L.DomUtil.create('label', 'context-layer-item', list);
-                var color = styles[def.id].fillColor || styles[def.id].color;
-
-                var cb = L.DomUtil.create('input', 'context-layer-checkbox', item);
-                cb.type = 'checkbox';
-                cb.checked = def.active !== false;
-                item.style.setProperty('--layer-color', color);
-
-                var swatch = L.DomUtil.create('span', 'context-layer-swatch', item);
-                swatch.style.background = color;
-
-                var labelText = L.DomUtil.create('span', 'context-layer-label', item);
-                labelText.textContent = def.label;
-
-                cb.addEventListener('change', function () {
-                    if (!def._leafletLayer) return;
-                    if (cb.checked) {
-                        def._leafletLayer.addTo(self._map);
-                    } else {
-                        self._map.removeLayer(def._leafletLayer);
-                    }
-                    // Sync bassin-minier mask
-                    if (def.id === 'bassin-minier' && bassinMask) {
-                        if (cb.checked) {
-                            bassinMask.addTo(self._map);
-                        } else {
-                            self._map.removeLayer(bassinMask);
-                        }
-                    }
-                });
-            });
-
-            toggle.addEventListener('click', function () {
-                panel.classList.toggle('open');
-            });
-
-            this._map.on('click', function () {
-                panel.classList.remove('open');
-            });
-
-            return wrapper;
-        }
-    });
-
-    // Grouped layer control (overlays only) with collapsible groups and feature counts
-    var GroupedLayerControl = L.Control.extend({
-        options: { position: 'topright', collapsed: false },
-        initialize: function (layerGroups, options) {
+    // Unified Layers Drawer
+    var LayersDrawer = L.Control.extend({
+        options: { position: 'topleft' },
+        initialize: function (layerGroups, contextLayers, baseLayers, options) {
             L.Util.setOptions(this, options);
             this._layerGroups = layerGroups;
-            this._layerMap = {};
+            this._contextLayers = contextLayers;
+            this._baseLayers = baseLayers;
             this._countSpans = {};
         },
         onAdd: function () {
-            var container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control-layers-expanded grouped-layers');
-            L.DomEvent.disableClickPropagation(container);
-            L.DomEvent.disableScrollPropagation(container);
+            var aside = L.DomUtil.create('aside', 'layers-drawer');
+            L.DomEvent.disableClickPropagation(aside);
+            L.DomEvent.disableScrollPropagation(aside);
             var self = this;
+            this._aside = aside;
+
+            // Drag handle (mobile)
+            L.DomUtil.create('div', 'layers-drag-handle', aside);
+
+            // Header
+            var header = L.DomUtil.create('div', 'layers-drawer-header', aside);
+            var title = L.DomUtil.create('span', 'layers-drawer-title', header);
+            title.textContent = 'Couches';
+            var closeBtn = L.DomUtil.create('button', 'layers-drawer-close', header);
+            closeBtn.innerHTML = '&times;';
+            closeBtn.title = 'Fermer';
+            closeBtn.setAttribute('aria-label', 'Fermer');
+            closeBtn.addEventListener('click', function () {
+                self.close();
+            });
+
+            // Tabs
+            var tabBar = L.DomUtil.create('div', 'layers-drawer-tabs', aside);
+            var tabCouches = L.DomUtil.create('button', 'layers-drawer-tab active', tabBar);
+            tabCouches.type = 'button';
+            tabCouches.textContent = 'Couches';
+            var tabFond = L.DomUtil.create('button', 'layers-drawer-tab', tabBar);
+            tabFond.type = 'button';
+            tabFond.textContent = 'Fond de carte';
+
+            var contentCouches = L.DomUtil.create('div', 'layers-drawer-tab-content active', aside);
+            var contentFond = L.DomUtil.create('div', 'layers-drawer-tab-content', aside);
+
+            tabCouches.addEventListener('click', function () {
+                tabCouches.classList.add('active');
+                tabFond.classList.remove('active');
+                contentCouches.classList.add('active');
+                contentFond.classList.remove('active');
+            });
+            tabFond.addEventListener('click', function () {
+                tabFond.classList.add('active');
+                tabCouches.classList.remove('active');
+                contentFond.classList.add('active');
+                contentCouches.classList.remove('active');
+            });
+
+            // === Couches tab content ===
+
+            // Context layers section
+            var ctxHeader = L.DomUtil.create('div', 'drawer-group-header', contentCouches);
+            var ctxSpan = L.DomUtil.create('span', '', ctxHeader);
+            ctxSpan.textContent = 'Contexte';
+            var ctxList = L.DomUtil.create('div', 'drawer-group-list', contentCouches);
+
+            this._contextLayers.forEach(function (def) {
+                self._buildLayerRow(ctxList, def, true);
+            });
 
             // Overlay groups
             this._layerGroups.forEach(function (g) {
-                var groupLabel = L.DomUtil.create('label', 'grouped-layers-group', container);
-                var groupInput = L.DomUtil.create('input', '', groupLabel);
+                var groupHeader = L.DomUtil.create('label', 'drawer-group-header', contentCouches);
+                var groupInput = L.DomUtil.create('input', '', groupHeader);
                 groupInput.type = 'checkbox';
                 groupInput.checked = g.layers.some(function (d) { return d.active !== false; });
 
-                // Collapse/expand toggle arrow
-                var toggleArrow = L.DomUtil.create('span', 'group-toggle', groupLabel);
+                var toggleArrow = L.DomUtil.create('span', 'drawer-group-toggle', groupHeader);
                 toggleArrow.textContent = '\u25BC';
 
-                var groupSpan = L.DomUtil.create('span', '', groupLabel);
+                var groupSpan = L.DomUtil.create('span', '', groupHeader);
                 groupSpan.textContent = ' ' + g.group;
 
-                var groupList = L.DomUtil.create('div', 'grouped-layers-list', container);
-                // Calculate natural height for animation
+                var groupList = L.DomUtil.create('div', 'drawer-group-list', contentCouches);
                 var layerInputs = [];
 
                 g.layers.forEach(function (def) {
-                    var label = L.DomUtil.create('label', 'grouped-layers-item', groupList);
-                    var input = L.DomUtil.create('input', '', label);
-                    input.type = 'checkbox';
-                    input.checked = def.active !== false;
-                    label.style.setProperty('--layer-color', styles[def.id].fillColor || styles[def.id].color);
-                    self._layerMap[def.id] = input;
+                    var input = self._buildLayerRow(groupList, def, false);
                     layerInputs.push({ input: input, def: def });
-                    var span = L.DomUtil.create('span', '', label);
-                    span.textContent = ' ' + def.label;
-
-                    // Feature count badge
-                    var countSpan = L.DomUtil.create('span', 'layer-count', label);
-                    self._countSpans[def.id] = countSpan;
 
                     input.addEventListener('change', function () {
-                        if (!def._leafletLayer) return;
-                        if (input.checked) {
-                            def._leafletLayer.addTo(self._map);
-                        } else {
-                            self._map.removeLayer(def._leafletLayer);
-                        }
-                        // Update group checkbox state
                         var allChecked = layerInputs.every(function (li) { return li.input.checked; });
                         var someChecked = layerInputs.some(function (li) { return li.input.checked; });
                         groupInput.checked = someChecked;
@@ -874,13 +808,11 @@
                 });
 
                 // Collapse/expand behavior
-                // Start inactive groups collapsed
                 var isCollapsed = !g.layers.some(function (d) { return d.active !== false; });
                 if (isCollapsed) {
                     groupList.classList.add('collapsed');
                     toggleArrow.classList.add('collapsed');
                 }
-                // Set initial max-height for animation
                 requestAnimationFrame(function () {
                     if (!groupList.classList.contains('collapsed')) {
                         groupList.style.maxHeight = groupList.scrollHeight + 'px';
@@ -896,7 +828,6 @@
                         groupList.style.maxHeight = groupList.scrollHeight + 'px';
                     } else {
                         groupList.style.maxHeight = groupList.scrollHeight + 'px';
-                        // Force reflow
                         groupList.offsetHeight; // eslint-disable-line no-unused-expressions
                         groupList.classList.add('collapsed');
                         toggleArrow.classList.add('collapsed');
@@ -915,14 +846,161 @@
                             self._map.removeLayer(li.def._leafletLayer);
                         }
                     });
+                    self._updateToggleIndicator();
                 });
             });
 
-            return container;
+            // === Fond de carte tab content ===
+            var cardList = L.DomUtil.create('div', 'drawer-base-cards', contentFond);
+            var activeName = Object.keys(this._baseLayers).find(function (n) {
+                return self._map.hasLayer(self._baseLayers[n]);
+            }) || Object.keys(this._baseLayers)[0];
+
+            var baseCards = [];
+            Object.keys(this._baseLayers).forEach(function (name) {
+                var card = L.DomUtil.create('button', 'drawer-base-card', cardList);
+                var isActive = name === activeName;
+                if (isActive) card.classList.add('active');
+                card.type = 'button';
+                card.setAttribute('aria-pressed', isActive);
+                if (baseLayerThumbnails[name]) {
+                    var thumb = L.DomUtil.create('img', 'drawer-base-card-thumb', card);
+                    thumb.src = baseLayerThumbnails[name];
+                    thumb.alt = name;
+                    thumb.loading = 'lazy';
+                }
+                var cardLabel = L.DomUtil.create('span', 'drawer-base-card-label', card);
+                cardLabel.textContent = name;
+                baseCards.push(card);
+                card.addEventListener('click', function () {
+                    Object.keys(self._baseLayers).forEach(function (n) {
+                        self._map.removeLayer(self._baseLayers[n]);
+                    });
+                    self._baseLayers[name].addTo(self._map);
+                    baseCards.forEach(function (c) {
+                        c.classList.remove('active');
+                        c.setAttribute('aria-pressed', 'false');
+                    });
+                    card.classList.add('active');
+                    card.setAttribute('aria-pressed', 'true');
+                    self._map.fire('baselayerchange', { name: name, layer: self._baseLayers[name] });
+                });
+            });
+
+            // The aside is appended to <main>, not the leaflet control container
+            document.querySelector('main').appendChild(aside);
+
+            // Return an empty div for the L.Control requirement
+            var dummy = L.DomUtil.create('div');
+            dummy.style.display = 'none';
+            return dummy;
+        },
+        _buildLayerRow: function (container, def, isContext) {
+            var self = this;
+            var row = L.DomUtil.create('label', 'drawer-layer-row', container);
+            var color = styles[def.id].fillColor || styles[def.id].color;
+            row.style.setProperty('--layer-color', color);
+
+            var cb = L.DomUtil.create('input', '', row);
+            cb.type = 'checkbox';
+            cb.checked = def.active !== false;
+
+            row.appendChild(createSwatch(def.id));
+
+            var label = L.DomUtil.create('span', 'drawer-layer-label', row);
+            label.textContent = def.label;
+
+            // Count span
+            var countSpan = L.DomUtil.create('span', 'drawer-layer-count', row);
+            self._countSpans[def.id] = countSpan;
+
+            // Zoom-to-layer button
+            var zoomBtn = L.DomUtil.create('button', 'layer-zoom-btn', row);
+            zoomBtn.type = 'button';
+            zoomBtn.title = 'Centrer sur la couche';
+            zoomBtn.setAttribute('aria-label', 'Centrer sur ' + def.label);
+            zoomBtn.innerHTML = zoomToLayerSvg;
+            zoomBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (def._leafletLayer && def._leafletLayer.getBounds) {
+                    var bounds = def._leafletLayer.getBounds();
+                    if (bounds.isValid()) {
+                        self._map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+                    }
+                }
+            });
+
+            cb.addEventListener('change', function () {
+                if (!def._leafletLayer) return;
+                if (cb.checked) {
+                    def._leafletLayer.addTo(self._map);
+                } else {
+                    self._map.removeLayer(def._leafletLayer);
+                }
+                // Sync bassin-minier mask
+                if (isContext && def.id === 'bassin-minier' && bassinMask) {
+                    if (cb.checked) {
+                        bassinMask.addTo(self._map);
+                    } else {
+                        self._map.removeLayer(bassinMask);
+                    }
+                }
+                self._updateToggleIndicator();
+            });
+
+            return cb;
+        },
+        open: function () {
+            this._aside.classList.add('open');
+            // Mobile: close detail panel (mutual exclusion)
+            if (window.innerWidth <= 600) {
+                hideDetail();
+            }
+            this._map.invalidateSize();
+        },
+        close: function () {
+            this._aside.classList.remove('open');
+            this._map.invalidateSize();
+        },
+        toggle: function () {
+            if (this._aside.classList.contains('open')) {
+                this.close();
+            } else {
+                this.open();
+            }
+        },
+        isOpen: function () {
+            return this._aside.classList.contains('open');
         },
         updateCount: function (layerId, count) {
             if (this._countSpans[layerId]) {
-                this._countSpans[layerId].textContent = '(' + count + ')';
+                this._countSpans[layerId].textContent = count;
+            }
+        },
+        _toggleBtn: null,
+        _updateToggleIndicator: function () {
+            if (!this._toggleBtn) return;
+            // Check if any non-default layers are toggled
+            var hasNonDefault = false;
+            this._layerGroups.forEach(function (g) {
+                g.layers.forEach(function (def) {
+                    if (!def._leafletLayer) return;
+                    var isOnMap = map.hasLayer(def._leafletLayer);
+                    var wasDefault = def.active !== false;
+                    if (isOnMap !== wasDefault) hasNonDefault = true;
+                });
+            });
+            this._contextLayers.forEach(function (def) {
+                if (!def._leafletLayer) return;
+                var isOnMap = map.hasLayer(def._leafletLayer);
+                var wasDefault = def.active !== false;
+                if (isOnMap !== wasDefault) hasNonDefault = true;
+            });
+            if (hasNonDefault) {
+                this._toggleBtn.classList.add('has-active');
+            } else {
+                this._toggleBtn.classList.remove('has-active');
             }
         }
     });
@@ -1189,7 +1267,7 @@
         }
     });
 
-    // Bottom bar: base layer picker + context layer picker + unified zoom — all side by side
+    // Bottom bar: layers toggle + search + unified zoom — all side by side
     var BottomBarControl = L.Control.extend({
         options: { position: 'bottomleft' },
         onAdd: function (map) {
@@ -1197,15 +1275,17 @@
             L.DomEvent.disableClickPropagation(container);
             L.DomEvent.disableScrollPropagation(container);
 
-            // Base layer picker
-            var blp = new BaseLayerPicker(baseLayers);
-            blp._map = map;
-            container.appendChild(blp.onAdd(map));
-
-            // Context layer picker
-            var clp = new ContextLayerPicker(contextLayers);
-            clp._map = map;
-            container.appendChild(clp.onAdd(map));
+            // Layers toggle button
+            var layersBtn = L.DomUtil.create('button', 'layers-toggle-btn', container);
+            layersBtn.type = 'button';
+            layersBtn.title = 'Couches';
+            layersBtn.setAttribute('aria-label', 'Couches');
+            layersBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
+            layersBtn.addEventListener('click', function () {
+                layersDrawer.toggle();
+            });
+            // Store reference for active indicator
+            layersDrawer._toggleBtn = layersBtn;
 
             // Search control
             var sc = new SearchControl();
@@ -1257,9 +1337,11 @@
             return container;
         }
     });
-    new BottomBarControl().addTo(map);
 
-    var overlayControl = new GroupedLayerControl(layerGroups);
+    var layersDrawer = new LayersDrawer(layerGroups, contextLayers, baseLayers);
+    layersDrawer.addTo(map);
+
+    new BottomBarControl().addTo(map);
 
     var boundsGroup = L.featureGroup();
     var loadedCount = 0;
@@ -1301,11 +1383,10 @@
     function onLayerLoaded() {
         loadedCount++;
         if (loadedCount === allLayerDefs.length) {
-            overlayControl.addTo(map);
-            // Update all feature counts now that the control is in the DOM
+            // Update all feature counts in the layers drawer
             allLayerDefs.forEach(function (d) {
                 if (d._featureCount !== undefined) {
-                    overlayControl.updateCount(d.id, d._featureCount);
+                    layersDrawer.updateCount(d.id, d._featureCount);
                 }
             });
             buildSearchIndex();
