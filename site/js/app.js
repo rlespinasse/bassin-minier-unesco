@@ -39,7 +39,7 @@
         'Satellite': 'Fond de carte &copy; <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>, Maxar, Earthstar Geographics'
     };
 
-    ignPlan.addTo(map);
+    cartoPositron.addTo(map);
 
     map.on('baselayerchange', function (e) {
         var el = document.getElementById('base-layer-attribution');
@@ -56,7 +56,8 @@
             dashArray: '8 6',
             fillColor: '#FF6F00',
             fillOpacity: 0.05,
-            opacity: 0.7
+            opacity: 0.7,
+            pane: 'bassinPane'
         },
         'zone-tampon': {
             color: '#FFD700',
@@ -75,38 +76,38 @@
         },
         'cites-minieres': {
             color: '#E74C3C',
-            weight: 1.5,
+            weight: 2,
             fillColor: '#E74C3C',
             fillOpacity: 0.35,
-            opacity: 0.8
+            opacity: 0.9
         },
         'batis': {
             color: '#8B4513',
-            weight: 1.5,
+            weight: 2,
             fillColor: '#8B4513',
             fillOpacity: 0.4,
-            opacity: 0.8
+            opacity: 0.9
         },
         'cavaliers': {
             color: '#2ECC71',
             weight: 3,
             fillColor: '#2ECC71',
             fillOpacity: 0.4,
-            opacity: 0.8
+            opacity: 0.9
         },
         'espace-neonaturel': {
             color: '#27AE60',
-            weight: 1.5,
+            weight: 2,
             fillColor: '#27AE60',
             fillOpacity: 0.35,
-            opacity: 0.8
+            opacity: 0.9
         },
         'terrils': {
             color: '#95A5A6',
-            weight: 1.5,
+            weight: 2,
             fillColor: '#95A5A6',
             fillOpacity: 0.4,
-            opacity: 0.8
+            opacity: 0.9
         },
         'puits-de-mines': {
             radius: 5,
@@ -126,42 +127,43 @@
         },
         'zt-cavaliers': {
             color: '#66BB6A',
-            weight: 2,
-            dashArray: '6 4',
+            weight: 1.5,
+            dashArray: '5 4',
             fillColor: '#66BB6A',
-            fillOpacity: 0.3,
-            opacity: 0.7
+            fillOpacity: 0.2,
+            opacity: 0.6
         },
         'zt-cites-minieres': {
             color: '#EF9A9A',
             weight: 1.5,
-            dashArray: '4 3',
+            dashArray: '5 4',
             fillColor: '#EF9A9A',
-            fillOpacity: 0.25,
-            opacity: 0.7
+            fillOpacity: 0.2,
+            opacity: 0.6
         },
         'zt-espaces-neonaturels': {
             color: '#81C784',
             weight: 1.5,
-            dashArray: '4 3',
+            dashArray: '5 4',
             fillColor: '#81C784',
-            fillOpacity: 0.25,
-            opacity: 0.7
+            fillOpacity: 0.2,
+            opacity: 0.6
         },
         'zt-terrils': {
             color: '#BDBDBD',
             weight: 1.5,
-            dashArray: '4 3',
+            dashArray: '5 4',
             fillColor: '#BDBDBD',
-            fillOpacity: 0.3,
-            opacity: 0.7
+            fillOpacity: 0.2,
+            opacity: 0.6
         },
         'zt-parvis-agricoles': {
             color: '#AED581',
             weight: 1.5,
+            dashArray: '5 4',
             fillColor: '#AED581',
-            fillOpacity: 0.25,
-            opacity: 0.7
+            fillOpacity: 0.2,
+            opacity: 0.6
         },
     };
 
@@ -928,6 +930,15 @@
     var loadedCount = 0;
     var bassinMask = null; // Inverted mask layer for bassin-minier
 
+    // Dedicated pane for bassin-minier so it renders below other overlays
+    var bassinPane = map.createPane('bassinPane');
+    bassinPane.style.zIndex = 350; // above tilePane (200) but below overlayPane (400)
+
+    // Dedicated pane for the mask so it never intercepts clicks
+    var maskPane = map.createPane('maskPane');
+    maskPane.style.zIndex = 360; // just above bassinPane, below overlayPane
+    maskPane.style.pointerEvents = 'none';
+
     // Build an inverted polygon (world exterior with hole cut for the given coordinates)
     function createMaskLayer(coordinates) {
         var world = [
@@ -941,7 +952,8 @@
             fillColor: '#000',
             fillOpacity: 0.3,
             stroke: false,
-            interactive: false
+            interactive: false,
+            pane: 'maskPane'
         });
     }
 
