@@ -1,33 +1,67 @@
 (function () {
     'use strict';
 
-    // Map initialization
-    var map = L.map('map', { zoomControl: false }).setView([50.35, 2.8], 10);
+    // --- Helpers ---
+
+    function joinNotNull(arr) {
+        return arr.filter(v => v && v !== 'None').join(', ');
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function rawHtml(str) {
+        return { __html: str };
+    }
+
+    function renderValue(val) {
+        if (val && typeof val === 'object' && val.__html) return val.__html;
+        return escapeHtml(val);
+    }
+
+    /**
+     * Set a toggle button's visual state.
+     * @param {HTMLElement} btn - The button element
+     * @param {boolean} active - Whether the toggle should appear active
+     * @param {string} scope - Label for the title (e.g. 'la couche', 'le groupe')
+     */
+    function setToggleState(btn, active, scope) {
+        btn.classList.toggle('active', active);
+        btn.classList.toggle('inactive', !active);
+        btn.textContent = active ? '\u2212' : '+';
+        btn.title = `${active ? 'Masquer' : 'Afficher'} ${scope}`;
+    }
+
+    // --- Map initialization ---
+
+    const map = L.map('map', { zoomControl: false }).setView([50.35, 2.8], 10);
 
     // Base layers
-    var ignPlan = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+    const ignPlan = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
         attribution: '&copy; <a href="https://www.ign.fr/">IGN</a>',
         maxZoom: 18
     });
 
-    var cartoPositron = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    const cartoPositron = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/">CARTO</a>',
         subdomains: 'abcd',
         maxZoom: 20
     });
 
-    var esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: '&copy; <a href="https://www.esri.com">Esri</a>, Maxar, Earthstar Geographics',
         maxZoom: 18
     });
 
-    var baseLayers = {
+    const baseLayers = {
         'IGN': ignPlan,
         'Clair': cartoPositron,
         'Satellite': esriSatellite
     };
 
-    var baseLayerThumbnails = {
+    const baseLayerThumbnails = {
         'IGN': 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX=10&TILEROW=345&TILECOL=520',
         'Clair': 'https://a.basemaps.cartocdn.com/light_all/10/520/345.png',
         'Satellite': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/10/345/520'
@@ -36,10 +70,10 @@
     cartoPositron.addTo(map);
 
     // Title overlay control
-    var TitleControl = L.Control.extend({
+    const TitleControl = L.Control.extend({
         options: { position: 'topleft' },
         onAdd: function () {
-            var div = L.DomUtil.create('div', 'title-overlay');
+            const div = L.DomUtil.create('div', 'title-overlay');
             div.innerHTML = '<h1>Bassin Minier du Nord-Pas de Calais</h1>' +
                 '<p>Patrimoine mondial de l\'UNESCO — Paysage culturel évolutif vivant, inscrit en 2012</p>';
             L.DomEvent.disableClickPropagation(div);
@@ -53,8 +87,9 @@
         'Données <a href="https://www.missionbassinminier.org">Mission Bassin Minier</a> — <a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/">Licence ETALAB v2.0</a>'
     );
 
-    // Layer styles
-    var styles = {
+    // --- Layer styles ---
+
+    const styles = {
         'bassin-minier': {
             color: '#FF6F00',
             weight: 2,
@@ -174,7 +209,7 @@
 
     // Hover highlight styles per layer
     function getHoverStyle(layerId) {
-        var base = styles[layerId];
+        const base = styles[layerId];
         if (base.radius) {
             return { radius: base.radius + 2, weight: 3, fillOpacity: 0.9 };
         }
@@ -182,28 +217,29 @@
     }
 
     // Tooltip text per layer
-    var tooltipText = {
-        'bassin-minier': function (p) { return p.nom; },
-        'bien-inscrit': function (p) { return p.nom; },
-        'zone-tampon': function (p) { return 'Zone tampon' + (p.id ? ' ' + p.id : ''); },
-        'cites-minieres': function (p) { return p.nom; },
-        'batis': function (p) { return p.denomination || p.nom; },
-        'cavaliers': function (p) { return 'Cavalier' + (p.id_unesco ? ' ' + p.id_unesco : ''); },
-        'espace-neonaturel': function (p) { return p.nom; },
-        'terrils': function (p) { return p.nom || ('Terril ' + (p.no_terril || '')); },
-        'puits-de-mines': function (p) { return p.fosse ? 'Fosse ' + p.fosse : 'Puits'; },
-        'communes-mbm': function (p) { return p.nom; },
-        'zt-cavaliers': function (p) { return p.nom || 'Cavalier (ZT)'; },
-        'zt-cites-minieres': function (p) { return p.nom; },
-        'zt-espaces-neonaturels': function (p) { return p.nom; },
-        'zt-terrils': function (p) { return p.nom || 'Terril (ZT)'; },
-        'zt-parvis-agricoles': function (p) { return 'Parvis agricole' + (p.id ? ' ' + p.id : ''); }
+    const tooltipText = {
+        'bassin-minier': p => p.nom,
+        'bien-inscrit': p => p.nom,
+        'zone-tampon': p => 'Zone tampon' + (p.id ? ` ${p.id}` : ''),
+        'cites-minieres': p => p.nom,
+        'batis': p => p.denomination || p.nom,
+        'cavaliers': p => 'Cavalier' + (p.id_unesco ? ` ${p.id_unesco}` : ''),
+        'espace-neonaturel': p => p.nom,
+        'terrils': p => p.nom || `Terril ${p.no_terril || ''}`,
+        'puits-de-mines': p => p.fosse ? `Fosse ${p.fosse}` : 'Puits',
+        'communes-mbm': p => p.nom,
+        'zt-cavaliers': p => p.nom || 'Cavalier (ZT)',
+        'zt-cites-minieres': p => p.nom,
+        'zt-espaces-neonaturels': p => p.nom,
+        'zt-terrils': p => p.nom || 'Terril (ZT)',
+        'zt-parvis-agricoles': p => 'Parvis agricole' + (p.id ? ` ${p.id}` : '')
     };
 
-    // Detail panel
-    var detailPanel = document.getElementById('detail-panel');
-    var detailContent = document.getElementById('detail-content');
-    var detailClose = document.getElementById('detail-close');
+    // --- Detail panel ---
+
+    const detailPanel = document.getElementById('detail-panel');
+    const detailContent = document.getElementById('detail-content');
+    const detailClose = document.getElementById('detail-close');
 
     function showDetail(html) {
         // Mobile: close layers drawer (mutual exclusion)
@@ -222,7 +258,7 @@
 
     detailClose.addEventListener('click', hideDetail);
 
-    document.addEventListener('keydown', function (e) {
+    document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             if (layersDrawer && layersDrawer.isOpen()) {
                 layersDrawer.close();
@@ -232,7 +268,7 @@
         }
     });
 
-    map.on('click', function () {
+    map.on('click', () => {
         hideDetail();
         if (layersDrawer && layersDrawer.isOpen()) {
             layersDrawer.close();
@@ -241,7 +277,7 @@
 
     // Helper: build MH protection rows
     function mhRows(p) {
-        var rows = [];
+        const rows = [];
         if (p.inscrit_mh && String(p.inscrit_mh).toLowerCase() !== 'false' && String(p.inscrit_mh).toLowerCase() !== 'non')
             rows.push(['Inscrit MH', 'Oui']);
         if (p.classe_mh && String(p.classe_mh).toLowerCase() !== 'false' && String(p.classe_mh).toLowerCase() !== 'non')
@@ -250,7 +286,7 @@
     }
 
     // Data.gouv.fr sources for each dataset
-    var dataGouvSources = {
+    const dataGouvSources = {
         patrimoine: {
             name: 'Perimetre bien inscrit et zone tampon du Bassin Minier',
             url: 'https://www.data.gouv.fr/datasets/perimetre-bien-inscrit-et-zone-tampon-du-bassin-minier-patrimoine-mondial-unesco'
@@ -266,57 +302,67 @@
     };
 
     function sourceRow(source) {
-        return ['Sources', rawHtml('<a href="' + source.url + '" target="_blank" rel="noopener">' + source.name + '</a>')];
+        return ['Sources', rawHtml(`<a href="${source.url}" target="_blank" rel="noopener">${source.name}</a>`)];
     }
 
-    // Detail builders per layer — each returns an array of { label, rows } groups
-    var detailBuilders = {
-        'bassin-minier': function (p) {
-            return buildDetail(p.nom || 'Bassin minier', 'bassin-minier', [
-                {
-                    label: 'Caracteristiques', rows: [
-                        p.surface_km2 && ['Surface', p.surface_km2 + ' km\u00b2'],
-                        p.population && ['Population', p.population.toLocaleString('fr-FR')]
-                    ]
-                },
-                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
-            ]);
-        },
-        'bien-inscrit': function (p) {
-            return buildDetail(p.nom || 'Bien inscrit UNESCO', 'bien-inscrit', [
-                {
-                    label: 'Identification', rows: [
-                        p.section && ['Section', p.section],
-                        p.no_section && ['N° Section', p.no_section],
-                        p.no_element && ['Element', p.no_element]
-                    ]
-                },
-                {
-                    label: 'Caracteristiques', rows: [
-                        p.surface_ha && ['Surface', p.surface_ha + ' ha']
-                    ]
-                },
-                { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
-            ]);
-        },
-        'zone-tampon': function (p) {
-            return buildDetail('Zone tampon', 'zone-tampon', [
-                {
-                    label: 'Identification', rows: [
-                        p.id && ['ID', p.id]
-                    ]
-                },
-                {
-                    label: 'Caracteristiques', rows: [
-                        p.surface_ha && ['Surface', p.surface_ha + ' ha']
-                    ]
-                },
-                { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
-            ]);
-        },
-        'cites-minieres': function (p) {
-            var nom = p.nom || 'Cite miniere';
-            if (p.nom_2) nom += ' / ' + p.nom_2;
+    function buildDetail(title, layerId, groups) {
+        const color = styles[layerId] ? (styles[layerId].fillColor || styles[layerId].color) : '#888';
+        let html = `<h3><span class="detail-layer-badge" style="background:${color}"></span>${escapeHtml(title)}</h3>`;
+        for (const group of groups) {
+            const rows = group.rows.filter(Boolean);
+            if (rows.length === 0) continue;
+            html += `<h4>${escapeHtml(group.label)}</h4><table>`;
+            for (const row of rows) {
+                html += `<tr><td>${escapeHtml(row[0])}</td><td>${renderValue(row[1])}</td></tr>`;
+            }
+            html += '</table>';
+        }
+        return html;
+    }
+
+    // --- Detail builders per layer ---
+
+    const detailBuilders = {
+        'bassin-minier': p => buildDetail(p.nom || 'Bassin minier', 'bassin-minier', [
+            {
+                label: 'Caracteristiques', rows: [
+                    p.surface_km2 && ['Surface', `${p.surface_km2} km\u00b2`],
+                    p.population && ['Population', p.population.toLocaleString('fr-FR')]
+                ]
+            },
+            { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
+        ]),
+        'bien-inscrit': p => buildDetail(p.nom || 'Bien inscrit UNESCO', 'bien-inscrit', [
+            {
+                label: 'Identification', rows: [
+                    p.section && ['Section', p.section],
+                    p.no_section && ['N° Section', p.no_section],
+                    p.no_element && ['Element', p.no_element]
+                ]
+            },
+            {
+                label: 'Caracteristiques', rows: [
+                    p.surface_ha && ['Surface', `${p.surface_ha} ha`]
+                ]
+            },
+            { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
+        ]),
+        'zone-tampon': p => buildDetail('Zone tampon', 'zone-tampon', [
+            {
+                label: 'Identification', rows: [
+                    p.id && ['ID', p.id]
+                ]
+            },
+            {
+                label: 'Caracteristiques', rows: [
+                    p.surface_ha && ['Surface', `${p.surface_ha} ha`]
+                ]
+            },
+            { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
+        ]),
+        'cites-minieres': p => {
+            let nom = p.nom || 'Cite miniere';
+            if (p.nom_2) nom += ` / ${p.nom_2}`;
             return buildDetail(nom, 'cites-minieres', [
                 {
                     label: 'Localisation', rows: [
@@ -344,39 +390,37 @@
                 }
             ]);
         },
-        'batis': function (p) {
-            return buildDetail(p.denomination || p.nom || 'Bati minier', 'batis', [
-                {
-                    label: 'Localisation', rows: [
-                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
-                    ]
-                },
-                {
-                    label: 'Identification', rows: [
-                        p.typologie && ['Typologie', p.typologie],
-                        p.compagnie && ['Compagnie', p.compagnie],
-                        p.periode && ['Periode', p.periode],
-                        p.proprietaire && ['Proprietaire', p.proprietaire],
-                        p.id_unesco && ['ID UNESCO', p.id_unesco],
-                        p.element && ['Element', p.element],
-                        p.objet && ['Objet', p.objet]
-                    ]
-                },
-                {
-                    label: 'Protection', rows: [
-                        p.protection && p.protection !== 'non' && ['Protection', p.protection]
-                    ].concat(mhRows(p))
-                },
-                {
-                    label: 'Liens', rows: [
-                        sourceRow(dataGouvSources.patrimoine),
-                        (p.nom || p.compagnie || p.periode || p.proprietaire || p.protection) && sourceRow(dataGouvSources.mbm)
-                    ]
-                }
-            ]);
-        },
-        'cavaliers': function (p) {
-            var communes = joinNotNull([
+        'batis': p => buildDetail(p.denomination || p.nom || 'Bati minier', 'batis', [
+            {
+                label: 'Localisation', rows: [
+                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
+                ]
+            },
+            {
+                label: 'Identification', rows: [
+                    p.typologie && ['Typologie', p.typologie],
+                    p.compagnie && ['Compagnie', p.compagnie],
+                    p.periode && ['Periode', p.periode],
+                    p.proprietaire && ['Proprietaire', p.proprietaire],
+                    p.id_unesco && ['ID UNESCO', p.id_unesco],
+                    p.element && ['Element', p.element],
+                    p.objet && ['Objet', p.objet]
+                ]
+            },
+            {
+                label: 'Protection', rows: [
+                    p.protection && p.protection !== 'non' && ['Protection', p.protection]
+                ].concat(mhRows(p))
+            },
+            {
+                label: 'Liens', rows: [
+                    sourceRow(dataGouvSources.patrimoine),
+                    (p.nom || p.compagnie || p.periode || p.proprietaire || p.protection) && sourceRow(dataGouvSources.mbm)
+                ]
+            }
+        ]),
+        'cavaliers': p => {
+            const communes = joinNotNull([
                 p.commune_1, p.commune_2, p.commune_3,
                 p.commune_4, p.commune_5, p.commune_6
             ]);
@@ -388,7 +432,7 @@
                 },
                 {
                     label: 'Caracteristiques', rows: [
-                        p.longueur_m && ['Longueur', Math.round(p.longueur_m) + ' m']
+                        p.longueur_m && ['Longueur', `${Math.round(p.longueur_m)} m`]
                     ]
                 },
                 {
@@ -401,67 +445,61 @@
                 { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
             ]);
         },
-        'espace-neonaturel': function (p) {
-            return buildDetail(p.nom || 'Espace neo-naturel', 'espace-neonaturel', [
-                {
-                    label: 'Localisation', rows: [
-                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
-                    ]
-                },
-                {
-                    label: 'Identification', rows: [
-                        p.id_unesco && ['ID UNESCO', p.id_unesco],
-                        p.element && ['Element', p.element],
-                        p.objet && ['Objet', p.objet]
-                    ]
-                },
-                { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
-            ]);
-        },
-        'terrils': function (p) {
-            return buildDetail(p.nom || 'Terril', 'terrils', [
-                {
-                    label: 'Localisation', rows: [
-                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
-                    ]
-                },
-                {
-                    label: 'Identification', rows: [
-                        p.no_terril && ['N\u00b0 Terril', p.no_terril],
-                        p.compagnie && ['Compagnie', p.compagnie],
-                        p.groupe && ['Groupe', p.groupe],
-                        p.id_unesco && ['ID UNESCO', p.id_unesco],
-                        p.element && ['Element', p.element],
-                        p.objet && ['Objet', p.objet]
-                    ]
-                },
-                {
-                    label: 'Caracteristiques', rows: [
-                        p.forme && ['Forme', p.forme]
-                    ]
-                },
-                { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
-            ]);
-        },
-        'communes-mbm': function (p) {
-            return buildDetail(p.nom || 'Commune', 'communes-mbm', [
-                {
-                    label: 'Identification', rows: [
-                        p.insee && ['INSEE', p.insee],
-                        p.statut && ['Statut', p.statut]
-                    ]
-                },
-                {
-                    label: 'Caracteristiques', rows: [
-                        p.population && ['Population', Number(p.population).toLocaleString('fr-FR')],
-                        p.surface_km2 && ['Surface', Number(p.surface_km2).toFixed(1) + ' km\u00b2']
-                    ]
-                },
-                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
-            ]);
-        },
-        'zt-cavaliers': function (p) {
-            var communes = joinNotNull([p.commune_1, p.commune_2, p.commune_3, p.commune_4]);
+        'espace-neonaturel': p => buildDetail(p.nom || 'Espace neo-naturel', 'espace-neonaturel', [
+            {
+                label: 'Localisation', rows: [
+                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
+                ]
+            },
+            {
+                label: 'Identification', rows: [
+                    p.id_unesco && ['ID UNESCO', p.id_unesco],
+                    p.element && ['Element', p.element],
+                    p.objet && ['Objet', p.objet]
+                ]
+            },
+            { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
+        ]),
+        'terrils': p => buildDetail(p.nom || 'Terril', 'terrils', [
+            {
+                label: 'Localisation', rows: [
+                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
+                ]
+            },
+            {
+                label: 'Identification', rows: [
+                    p.no_terril && ['N\u00b0 Terril', p.no_terril],
+                    p.compagnie && ['Compagnie', p.compagnie],
+                    p.groupe && ['Groupe', p.groupe],
+                    p.id_unesco && ['ID UNESCO', p.id_unesco],
+                    p.element && ['Element', p.element],
+                    p.objet && ['Objet', p.objet]
+                ]
+            },
+            {
+                label: 'Caracteristiques', rows: [
+                    p.forme && ['Forme', p.forme]
+                ]
+            },
+            { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
+        ]),
+        'communes-mbm': p => buildDetail(p.nom || 'Commune', 'communes-mbm', [
+            {
+                label: 'Identification', rows: [
+                    p.insee && ['INSEE', p.insee],
+                    p.statut && ['Statut', p.statut]
+                ]
+            },
+            {
+                label: 'Caracteristiques', rows: [
+                    p.population && ['Population', Number(p.population).toLocaleString('fr-FR')],
+                    p.surface_km2 && ['Surface', `${Number(p.surface_km2).toFixed(1)} km\u00b2`]
+                ]
+            },
+            { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
+        ]),
+        'zt-cavaliers': p => {
+            const communes = joinNotNull([p.commune_1, p.commune_2, p.commune_3, p.commune_4]);
             return buildDetail(p.nom || 'Cavalier (zone tampon)', 'zt-cavaliers', [
                 {
                     label: 'Localisation', rows: [
@@ -476,9 +514,9 @@
                 { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
             ]);
         },
-        'zt-cites-minieres': function (p) {
-            var nom = p.nom || 'Cite miniere (zone tampon)';
-            if (p.nom_2) nom += ' / ' + p.nom_2;
+        'zt-cites-minieres': p => {
+            let nom = p.nom || 'Cite miniere (zone tampon)';
+            if (p.nom_2) nom += ` / ${p.nom_2}`;
             return buildDetail(nom, 'zt-cites-minieres', [
                 {
                     label: 'Localisation', rows: [
@@ -496,24 +534,22 @@
                 { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
             ]);
         },
-        'zt-espaces-neonaturels': function (p) {
-            return buildDetail(p.nom || 'Espace neo-naturel (zone tampon)', 'zt-espaces-neonaturels', [
-                {
-                    label: 'Localisation', rows: [
-                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
-                    ]
-                },
-                {
-                    label: 'Identification', rows: [
-                        p.id && ['ID', p.id]
-                    ]
-                },
-                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
-            ]);
-        },
-        'zt-terrils': function (p) {
-            var nom = p.nom || 'Terril (zone tampon)';
-            if (p.nom_usuel) nom += ' (' + p.nom_usuel + ')';
+        'zt-espaces-neonaturels': p => buildDetail(p.nom || 'Espace neo-naturel (zone tampon)', 'zt-espaces-neonaturels', [
+            {
+                label: 'Localisation', rows: [
+                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
+                ]
+            },
+            {
+                label: 'Identification', rows: [
+                    p.id && ['ID', p.id]
+                ]
+            },
+            { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
+        ]),
+        'zt-terrils': p => {
+            let nom = p.nom || 'Terril (zone tampon)';
+            if (p.nom_usuel) nom += ` (${p.nom_usuel})`;
             return buildDetail(nom, 'zt-terrils', [
                 {
                     label: 'Localisation', rows: [
@@ -533,27 +569,25 @@
                 { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
             ]);
         },
-        'zt-parvis-agricoles': function (p) {
-            return buildDetail('Parvis agricole', 'zt-parvis-agricoles', [
-                {
-                    label: 'Identification', rows: [
-                        p.id && ['ID', p.id]
-                    ]
-                },
-                {
-                    label: 'Caracteristiques', rows: [
-                        p.qualite_vue && ['Qualite de vue', p.qualite_vue],
-                        p.vue_sur && ['Vue sur', p.vue_sur]
-                    ]
-                },
-                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
-            ]);
-        },
-        'puits-de-mines': function (p) {
-            var title = 'Puits';
+        'zt-parvis-agricoles': p => buildDetail('Parvis agricole', 'zt-parvis-agricoles', [
+            {
+                label: 'Identification', rows: [
+                    p.id && ['ID', p.id]
+                ]
+            },
+            {
+                label: 'Caracteristiques', rows: [
+                    p.qualite_vue && ['Qualite de vue', p.qualite_vue],
+                    p.vue_sur && ['Vue sur', p.vue_sur]
+                ]
+            },
+            { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
+        ]),
+        'puits-de-mines': p => {
+            let title = 'Puits';
             if (p.fosse) {
-                title = 'Fosse ' + p.fosse;
-                if (p.fosse_alias) title += ' (' + p.fosse_alias + ')';
+                title = `Fosse ${p.fosse}`;
+                if (p.fosse_alias) title += ` (${p.fosse_alias})`;
             }
             return buildDetail(title, 'puits-de-mines', [
                 {
@@ -571,8 +605,8 @@
                 },
                 {
                     label: 'Caracteristiques', rows: [
-                        p.profondeur && ['Profondeur', Math.round(p.profondeur) + ' m'],
-                        p.cote && ['Cote', Math.round(p.cote) + ' m']
+                        p.profondeur && ['Profondeur', `${Math.round(p.profondeur)} m`],
+                        p.cote && ['Cote', `${Math.round(p.cote)} m`]
                     ]
                 },
                 {
@@ -583,7 +617,7 @@
                 },
                 {
                     label: 'Liens', rows: [
-                        p.brgm && ['Fiche BRGM', rawHtml('<a href="' + encodeURI(p.brgm) + '" target="_blank" rel="noopener">Voir</a>')],
+                        p.brgm && ['Fiche BRGM', rawHtml(`<a href="${encodeURI(p.brgm)}" target="_blank" rel="noopener">Voir</a>`)],
                         sourceRow(dataGouvSources.puits)
                     ]
                 }
@@ -591,44 +625,9 @@
         }
     };
 
-    function joinNotNull(arr) {
-        return arr.filter(function (v) { return v && v !== 'None'; }).join(', ');
-    }
+    // --- Layer definitions ---
 
-    function escapeHtml(str) {
-        if (!str) return '';
-        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    function rawHtml(str) {
-        return { __html: str };
-    }
-
-    function renderValue(val) {
-        if (val && typeof val === 'object' && val.__html) return val.__html;
-        return escapeHtml(val);
-    }
-
-    function buildDetail(title, layerId, groups) {
-        var color = styles[layerId] ? (styles[layerId].fillColor || styles[layerId].color) : '#888';
-        var html = '<h3><span class="detail-layer-badge" style="background:' + color + '"></span>' + escapeHtml(title) + '</h3>';
-        groups.forEach(function (group) {
-            // Filter out falsy rows (from conditional && expressions)
-            var rows = group.rows.filter(Boolean);
-            if (rows.length === 0) return;
-            html += '<h4>' + escapeHtml(group.label) + '</h4>';
-            html += '<table>';
-            rows.forEach(function (row) {
-                html += '<tr><td>' + escapeHtml(row[0]) + '</td><td>' + renderValue(row[1]) + '</td></tr>';
-            });
-            html += '</table>';
-        });
-        return html;
-    }
-
-    // Layer definitions grouped (render order: first group/layer = bottom)
-    // active: whether the layer is visible by default
-    var layerGroups = [
+    const layerGroups = [
         {
             group: 'Patrimoine mondial UNESCO', layers: [
                 { id: 'batis', label: 'Batis', file: 'data/batis.geojson', active: true },
@@ -656,50 +655,46 @@
         },
     ];
 
-    // Context layers displayed in a separate picker (like fond de carte)
-    var contextLayers = [
+    const contextLayers = [
         { id: 'bassin-minier', label: 'Bassin minier (ERBM)', file: 'data/bassin-minier.geojson', active: true },
         { id: 'communes-mbm', label: 'Communes', file: 'data/communes-mbm.geojson', active: false }
     ];
 
     // Flatten for loading
-    var allLayerDefs = [];
-    layerGroups.forEach(function (g) {
-        g.layers.forEach(function (def) { allLayerDefs.push(def); });
-    });
-    contextLayers.forEach(function (def) { allLayerDefs.push(def); });
+    const allLayerDefs = [
+        ...layerGroups.flatMap(g => g.layers),
+        ...contextLayers
+    ];
 
     // Determine geometry type for legend swatch
     function getLayerGeomType(layerId) {
         if (styles[layerId] && styles[layerId].radius) return 'point';
-        // Linear features (cavaliers, zt-cavaliers) — check for weight > 2 and no/low fill
         if (layerId === 'cavaliers' || layerId === 'zt-cavaliers') return 'line';
         return 'polygon';
     }
 
     // Create a legend swatch element
     function createSwatch(layerId) {
-        var style = styles[layerId];
-        var geom = getLayerGeomType(layerId);
-        var color = style.fillColor || style.color;
-        var swatch = document.createElement('span');
+        const style = styles[layerId];
+        const geom = getLayerGeomType(layerId);
+        const color = style.fillColor || style.color;
+        const swatch = document.createElement('span');
         swatch.className = 'layer-swatch';
 
         if (geom === 'point') {
             swatch.classList.add('layer-swatch-point');
             swatch.style.background = color;
-            swatch.style.border = '1.5px solid ' + style.color;
+            swatch.style.border = `1.5px solid ${style.color}`;
         } else if (geom === 'line') {
             swatch.classList.add('layer-swatch-line');
-            swatch.style.background = style.color;
-            if (style.dashArray) {
-                swatch.style.background = 'repeating-linear-gradient(90deg, ' + style.color + ' 0, ' + style.color + ' 4px, transparent 4px, transparent 7px)';
-            }
+            swatch.style.background = style.dashArray
+                ? `repeating-linear-gradient(90deg, ${style.color} 0, ${style.color} 4px, transparent 4px, transparent 7px)`
+                : style.color;
         } else {
             swatch.classList.add('layer-swatch-polygon');
             swatch.style.background = color;
             swatch.style.opacity = Math.max(style.fillOpacity || 0.3, 0.4);
-            swatch.style.border = '1.5px solid ' + style.color;
+            swatch.style.border = `1.5px solid ${style.color}`;
             if (style.dashArray) {
                 swatch.style.borderStyle = 'dashed';
             }
@@ -707,11 +702,9 @@
         return swatch;
     }
 
-    // Zoom-to-layer icon SVG
+    // --- Unified Layers Drawer ---
 
-
-    // Unified Layers Drawer
-    var LayersDrawer = L.Control.extend({
+    const LayersDrawer = L.Control.extend({
         options: { position: 'topleft' },
         initialize: function (layerGroups, contextLayers, baseLayers, options) {
             L.Util.setOptions(this, options);
@@ -719,48 +712,47 @@
             this._contextLayers = contextLayers;
             this._baseLayers = baseLayers;
             this._countSpans = {};
+            this._groupLists = [];
         },
         onAdd: function () {
-            var aside = L.DomUtil.create('aside', 'layers-drawer');
+            const aside = L.DomUtil.create('aside', 'layers-drawer');
             L.DomEvent.disableClickPropagation(aside);
             L.DomEvent.disableScrollPropagation(aside);
-            var self = this;
+            const self = this;
             this._aside = aside;
 
             // Drag handle (mobile)
             L.DomUtil.create('div', 'layers-drag-handle', aside);
 
             // Header
-            var header = L.DomUtil.create('div', 'layers-drawer-header', aside);
-            var title = L.DomUtil.create('span', 'layers-drawer-title', header);
+            const header = L.DomUtil.create('div', 'layers-drawer-header', aside);
+            const title = L.DomUtil.create('span', 'layers-drawer-title', header);
             title.textContent = 'Couches';
-            var closeBtn = L.DomUtil.create('button', 'layers-drawer-close', header);
+            const closeBtn = L.DomUtil.create('button', 'layers-drawer-close', header);
             closeBtn.innerHTML = '&times;';
             closeBtn.title = 'Fermer';
             closeBtn.setAttribute('aria-label', 'Fermer');
-            closeBtn.addEventListener('click', function () {
-                self.close();
-            });
+            closeBtn.addEventListener('click', () => self.close());
 
             // Tabs
-            var tabBar = L.DomUtil.create('div', 'layers-drawer-tabs', aside);
-            var tabCouches = L.DomUtil.create('button', 'layers-drawer-tab active', tabBar);
+            const tabBar = L.DomUtil.create('div', 'layers-drawer-tabs', aside);
+            const tabCouches = L.DomUtil.create('button', 'layers-drawer-tab active', tabBar);
             tabCouches.type = 'button';
             tabCouches.textContent = 'Couches';
-            var tabFond = L.DomUtil.create('button', 'layers-drawer-tab', tabBar);
+            const tabFond = L.DomUtil.create('button', 'layers-drawer-tab', tabBar);
             tabFond.type = 'button';
             tabFond.textContent = 'Fond de carte';
 
-            var contentCouches = L.DomUtil.create('div', 'layers-drawer-tab-content active', aside);
-            var contentFond = L.DomUtil.create('div', 'layers-drawer-tab-content', aside);
+            const contentCouches = L.DomUtil.create('div', 'layers-drawer-tab-content active', aside);
+            const contentFond = L.DomUtil.create('div', 'layers-drawer-tab-content', aside);
 
-            tabCouches.addEventListener('click', function () {
+            tabCouches.addEventListener('click', () => {
                 tabCouches.classList.add('active');
                 tabFond.classList.remove('active');
                 contentCouches.classList.add('active');
                 contentFond.classList.remove('active');
             });
-            tabFond.addEventListener('click', function () {
+            tabFond.addEventListener('click', () => {
                 tabFond.classList.add('active');
                 tabCouches.classList.remove('active');
                 contentFond.classList.add('active');
@@ -768,296 +760,168 @@
             });
 
             // === Couches tab content ===
+            this._buildGroupSection(contentCouches, 'Contexte', this._contextLayers, true);
 
-            // Context layers section
-            var ctxHeader = L.DomUtil.create('div', 'drawer-group-header', contentCouches);
-            var ctxToggleArrow = L.DomUtil.create('span', 'drawer-group-toggle', ctxHeader);
-            var ctxSpan = L.DomUtil.create('span', 'drawer-group-label', ctxHeader);
-            ctxSpan.textContent = 'Contexte';
-
-            var ctxSomeActive = this._contextLayers.some(function (d) { return d.active !== false; });
-            var ctxGroupToggleBtn = L.DomUtil.create('button', 'layer-toggle-btn', ctxHeader);
-            ctxGroupToggleBtn.type = 'button';
-            ctxGroupToggleBtn.classList.add(ctxSomeActive ? 'active' : 'inactive');
-            ctxGroupToggleBtn.textContent = ctxSomeActive ? '\u2212' : '+';
-            ctxGroupToggleBtn.title = ctxSomeActive ? 'Masquer le groupe' : 'Afficher le groupe';
-
-            var ctxList = L.DomUtil.create('div', 'drawer-group-list', contentCouches);
-            var ctxLayerToggles = [];
-
-            this._contextLayers.forEach(function (def) {
-                var toggleBtn = self._buildLayerRow(ctxList, def, true);
-                ctxLayerToggles.push({ toggleBtn: toggleBtn, def: def });
-            });
-
-            function syncCtxGroupToggle() {
-                var anyActive = ctxLayerToggles.some(function (lt) {
-                    return lt.toggleBtn.classList.contains('active');
-                });
-                if (anyActive) {
-                    ctxGroupToggleBtn.classList.remove('inactive');
-                    ctxGroupToggleBtn.classList.add('active');
-                    ctxGroupToggleBtn.textContent = '\u2212';
-                    ctxGroupToggleBtn.title = 'Masquer le groupe';
-                } else {
-                    ctxGroupToggleBtn.classList.remove('active');
-                    ctxGroupToggleBtn.classList.add('inactive');
-                    ctxGroupToggleBtn.textContent = '+';
-                    ctxGroupToggleBtn.title = 'Afficher le groupe';
-                }
+            for (const g of this._layerGroups) {
+                this._buildGroupSection(contentCouches, g.group, g.layers, false);
             }
 
-            ctxLayerToggles.forEach(function (lt) {
-                lt.toggleBtn.closest('.drawer-layer-row').addEventListener('click', function () {
-                    setTimeout(syncCtxGroupToggle, 0);
-                });
-            });
-
-            ctxGroupToggleBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                var nowActive = ctxGroupToggleBtn.classList.contains('active');
-                ctxLayerToggles.forEach(function (lt) {
-                    var isLayerActive = lt.toggleBtn.classList.contains('active');
-                    if (nowActive && isLayerActive) {
-                        lt.toggleBtn.classList.remove('active');
-                        lt.toggleBtn.classList.add('inactive');
-                        lt.toggleBtn.textContent = '+';
-                        lt.toggleBtn.title = 'Afficher la couche';
-                        if (lt.def._leafletLayer) self._map.removeLayer(lt.def._leafletLayer);
-                        if (lt.def.id === 'bassin-minier' && bassinMask) {
-                            self._map.removeLayer(bassinMask);
-                        }
-                    } else if (!nowActive && !isLayerActive) {
-                        lt.toggleBtn.classList.remove('inactive');
-                        lt.toggleBtn.classList.add('active');
-                        lt.toggleBtn.textContent = '\u2212';
-                        lt.toggleBtn.title = 'Masquer la couche';
-                        if (lt.def._leafletLayer) lt.def._leafletLayer.addTo(self._map);
-                        if (lt.def.id === 'bassin-minier' && bassinMask) {
-                            bassinMask.addTo(self._map);
-                        }
-                    }
-                });
-                if (!nowActive && ctxList.classList.contains('collapsed')) {
-                    ctxList.classList.remove('collapsed');
-                    ctxToggleArrow.classList.remove('collapsed');
-                    ctxList.style.maxHeight = ctxList.scrollHeight + 'px';
-                }
-                syncCtxGroupToggle();
-                self._updateToggleIndicator();
-            });
-
-            // Collapse/expand for context group
-            if (!self._groupLists) self._groupLists = [];
-            self._groupLists.push(ctxList);
-
-            ctxToggleArrow.addEventListener('click', function (e) {
-                e.stopPropagation();
-                if (ctxList.classList.contains('collapsed')) {
-                    ctxList.classList.remove('collapsed');
-                    ctxToggleArrow.classList.remove('collapsed');
-                    ctxList.style.maxHeight = ctxList.scrollHeight + 'px';
-                } else {
-                    ctxList.style.maxHeight = ctxList.scrollHeight + 'px';
-                    ctxList.offsetHeight; // eslint-disable-line no-unused-expressions
-                    ctxList.classList.add('collapsed');
-                    ctxToggleArrow.classList.add('collapsed');
-                }
-            });
-
-            // Overlay groups
-            this._layerGroups.forEach(function (g) {
-                var groupHeader = L.DomUtil.create('div', 'drawer-group-header', contentCouches);
-
-                var toggleArrow = L.DomUtil.create('span', 'drawer-group-toggle', groupHeader);
-
-                var groupSpan = L.DomUtil.create('span', 'drawer-group-label', groupHeader);
-                groupSpan.textContent = ' ' + g.group;
-
-                // Group toggle button (+/-)
-                var someActive = g.layers.some(function (d) { return d.active !== false; });
-                var groupToggleBtn = L.DomUtil.create('button', 'layer-toggle-btn group-toggle-btn', groupHeader);
-                groupToggleBtn.type = 'button';
-                groupToggleBtn.classList.add(someActive ? 'active' : 'inactive');
-                groupToggleBtn.textContent = someActive ? '\u2212' : '+';
-                groupToggleBtn.title = someActive ? 'Masquer le groupe' : 'Afficher le groupe';
-
-                var groupList = L.DomUtil.create('div', 'drawer-group-list', contentCouches);
-                var layerToggles = [];
-
-                g.layers.forEach(function (def) {
-                    var toggleBtn = self._buildLayerRow(groupList, def, false);
-                    layerToggles.push({ toggleBtn: toggleBtn, def: def });
-                });
-
-                // Sync group toggle when individual layers change
-                function syncGroupToggle() {
-                    var anyActive = layerToggles.some(function (lt) {
-                        return lt.toggleBtn.classList.contains('active');
-                    });
-                    if (anyActive) {
-                        groupToggleBtn.classList.remove('inactive');
-                        groupToggleBtn.classList.add('active');
-                        groupToggleBtn.textContent = '\u2212';
-                        groupToggleBtn.title = 'Masquer le groupe';
-                    } else {
-                        groupToggleBtn.classList.remove('active');
-                        groupToggleBtn.classList.add('inactive');
-                        groupToggleBtn.textContent = '+';
-                        groupToggleBtn.title = 'Afficher le groupe';
-                    }
-                }
-
-                layerToggles.forEach(function (lt) {
-                    lt.toggleBtn.closest('.drawer-layer-row').addEventListener('click', function () {
-                        // Defer to let the layer toggle update first
-                        setTimeout(syncGroupToggle, 0);
-                    });
-                });
-
-                // Group toggle click: toggle all layers in the group
-                groupToggleBtn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    var nowActive = groupToggleBtn.classList.contains('active');
-                    layerToggles.forEach(function (lt) {
-                        var isLayerActive = lt.toggleBtn.classList.contains('active');
-                        if (nowActive && isLayerActive) {
-                            // Turn off
-                            lt.toggleBtn.classList.remove('active');
-                            lt.toggleBtn.classList.add('inactive');
-                            lt.toggleBtn.textContent = '+';
-                            lt.toggleBtn.title = 'Afficher la couche';
-                            if (lt.def._leafletLayer) self._map.removeLayer(lt.def._leafletLayer);
-                        } else if (!nowActive && !isLayerActive) {
-                            // Turn on
-                            lt.toggleBtn.classList.remove('inactive');
-                            lt.toggleBtn.classList.add('active');
-                            lt.toggleBtn.textContent = '\u2212';
-                            lt.toggleBtn.title = 'Masquer la couche';
-                            if (lt.def._leafletLayer) lt.def._leafletLayer.addTo(self._map);
-                        }
-                    });
-                    // Auto-expand group when enabling layers
-                    if (!nowActive && groupList.classList.contains('collapsed')) {
-                        groupList.classList.remove('collapsed');
-                        toggleArrow.classList.remove('collapsed');
-                        groupList.style.maxHeight = groupList.scrollHeight + 'px';
-                    }
-                    syncGroupToggle();
-                    self._updateToggleIndicator();
-                });
-
-                // Collapse/expand behavior
-                var isCollapsed = !someActive;
-                if (isCollapsed) {
-                    groupList.classList.add('collapsed');
-                    toggleArrow.classList.add('collapsed');
-                }
-                // Track non-collapsed group lists for maxHeight recalc on open
-                if (!self._groupLists) self._groupLists = [];
-                self._groupLists.push(groupList);
-
-                toggleArrow.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    if (groupList.classList.contains('collapsed')) {
-                        groupList.classList.remove('collapsed');
-                        toggleArrow.classList.remove('collapsed');
-                        groupList.style.maxHeight = groupList.scrollHeight + 'px';
-                    } else {
-                        groupList.style.maxHeight = groupList.scrollHeight + 'px';
-                        groupList.offsetHeight; // eslint-disable-line no-unused-expressions
-                        groupList.classList.add('collapsed');
-                        toggleArrow.classList.add('collapsed');
-                    }
-                });
-            });
-
             // === Fond de carte tab content ===
-            var cardList = L.DomUtil.create('div', 'drawer-base-cards', contentFond);
-            var activeName = Object.keys(this._baseLayers).find(function (n) {
-                return self._map.hasLayer(self._baseLayers[n]);
-            }) || Object.keys(this._baseLayers)[0];
+            const cardList = L.DomUtil.create('div', 'drawer-base-cards', contentFond);
+            const activeName = Object.keys(this._baseLayers).find(n =>
+                self._map.hasLayer(self._baseLayers[n])
+            ) || Object.keys(this._baseLayers)[0];
 
-            var baseCards = [];
-            Object.keys(this._baseLayers).forEach(function (name) {
-                var card = L.DomUtil.create('button', 'drawer-base-card', cardList);
-                var isActive = name === activeName;
+            const baseCards = [];
+            for (const name of Object.keys(this._baseLayers)) {
+                const card = L.DomUtil.create('button', 'drawer-base-card', cardList);
+                const isActive = name === activeName;
                 if (isActive) card.classList.add('active');
                 card.type = 'button';
                 card.setAttribute('aria-pressed', isActive);
                 if (baseLayerThumbnails[name]) {
-                    var thumb = L.DomUtil.create('img', 'drawer-base-card-thumb', card);
+                    const thumb = L.DomUtil.create('img', 'drawer-base-card-thumb', card);
                     thumb.src = baseLayerThumbnails[name];
                     thumb.alt = name;
                     thumb.loading = 'lazy';
                 }
-                var cardLabel = L.DomUtil.create('span', 'drawer-base-card-label', card);
+                const cardLabel = L.DomUtil.create('span', 'drawer-base-card-label', card);
                 cardLabel.textContent = name;
                 baseCards.push(card);
-                card.addEventListener('click', function () {
-                    Object.keys(self._baseLayers).forEach(function (n) {
+                card.addEventListener('click', () => {
+                    for (const n of Object.keys(self._baseLayers)) {
                         self._map.removeLayer(self._baseLayers[n]);
-                    });
+                    }
                     self._baseLayers[name].addTo(self._map);
-                    baseCards.forEach(function (c) {
+                    for (const c of baseCards) {
                         c.classList.remove('active');
                         c.setAttribute('aria-pressed', 'false');
-                    });
+                    }
                     card.classList.add('active');
                     card.setAttribute('aria-pressed', 'true');
-                    self._map.fire('baselayerchange', { name: name, layer: self._baseLayers[name] });
+                    self._map.fire('baselayerchange', { name, layer: self._baseLayers[name] });
                 });
-            });
+            }
 
-            // The aside is appended to <main>, not the leaflet control container
+            // Append aside to <main>, return empty div for L.Control
             document.querySelector('main').appendChild(aside);
-
-            // Return an empty div for the L.Control requirement
-            var dummy = L.DomUtil.create('div');
+            const dummy = L.DomUtil.create('div');
             dummy.style.display = 'none';
             return dummy;
         },
+
+        _buildGroupSection: function (container, groupLabel, layerDefs, isContext) {
+            const self = this;
+            const groupHeader = L.DomUtil.create('div', 'drawer-group-header', container);
+            const toggleArrow = L.DomUtil.create('span', 'drawer-group-toggle', groupHeader);
+            const groupSpan = L.DomUtil.create('span', 'drawer-group-label', groupHeader);
+            groupSpan.textContent = isContext ? groupLabel : ` ${groupLabel}`;
+
+            const someActive = layerDefs.some(d => d.active !== false);
+            const groupToggleBtn = L.DomUtil.create('button', 'layer-toggle-btn' + (isContext ? '' : ' group-toggle-btn'), groupHeader);
+            groupToggleBtn.type = 'button';
+            setToggleState(groupToggleBtn, someActive, 'le groupe');
+
+            const groupList = L.DomUtil.create('div', 'drawer-group-list', container);
+            const layerToggles = [];
+
+            for (const def of layerDefs) {
+                const toggleBtn = self._buildLayerRow(groupList, def, isContext);
+                layerToggles.push({ toggleBtn, def });
+            }
+
+            function syncGroupToggle() {
+                const anyActive = layerToggles.some(lt => lt.toggleBtn.classList.contains('active'));
+                setToggleState(groupToggleBtn, anyActive, 'le groupe');
+            }
+
+            for (const lt of layerToggles) {
+                lt.toggleBtn.closest('.drawer-layer-row').addEventListener('click', () => {
+                    setTimeout(syncGroupToggle, 0);
+                });
+            }
+
+            groupToggleBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                const nowActive = groupToggleBtn.classList.contains('active');
+                for (const lt of layerToggles) {
+                    const isLayerActive = lt.toggleBtn.classList.contains('active');
+                    if (nowActive && isLayerActive) {
+                        setToggleState(lt.toggleBtn, false, 'la couche');
+                        if (lt.def._leafletLayer) self._map.removeLayer(lt.def._leafletLayer);
+                        if (isContext && lt.def.id === 'bassin-minier' && bassinMask) {
+                            self._map.removeLayer(bassinMask);
+                        }
+                    } else if (!nowActive && !isLayerActive) {
+                        setToggleState(lt.toggleBtn, true, 'la couche');
+                        if (lt.def._leafletLayer) lt.def._leafletLayer.addTo(self._map);
+                        if (isContext && lt.def.id === 'bassin-minier' && bassinMask) {
+                            bassinMask.addTo(self._map);
+                        }
+                    }
+                }
+                if (!nowActive && groupList.classList.contains('collapsed')) {
+                    groupList.classList.remove('collapsed');
+                    toggleArrow.classList.remove('collapsed');
+                    groupList.style.maxHeight = `${groupList.scrollHeight}px`;
+                }
+                syncGroupToggle();
+                self._updateToggleIndicator();
+            });
+
+            // Collapse/expand
+            const isCollapsed = !someActive;
+            if (isCollapsed) {
+                groupList.classList.add('collapsed');
+                toggleArrow.classList.add('collapsed');
+            }
+            this._groupLists.push(groupList);
+
+            toggleArrow.addEventListener('click', e => {
+                e.stopPropagation();
+                if (groupList.classList.contains('collapsed')) {
+                    groupList.classList.remove('collapsed');
+                    toggleArrow.classList.remove('collapsed');
+                    groupList.style.maxHeight = `${groupList.scrollHeight}px`;
+                } else {
+                    groupList.style.maxHeight = `${groupList.scrollHeight}px`;
+                    groupList.offsetHeight; // force reflow
+                    groupList.classList.add('collapsed');
+                    toggleArrow.classList.add('collapsed');
+                }
+            });
+        },
+
         _buildLayerRow: function (container, def, isContext) {
-            var self = this;
-            var row = L.DomUtil.create('div', 'drawer-layer-row', container);
-            var color = styles[def.id].fillColor || styles[def.id].color;
+            const self = this;
+            const row = L.DomUtil.create('div', 'drawer-layer-row', container);
+            const color = styles[def.id].fillColor || styles[def.id].color;
             row.style.setProperty('--layer-color', color);
 
             row.appendChild(createSwatch(def.id));
 
-            var label = L.DomUtil.create('span', 'drawer-layer-label', row);
+            const label = L.DomUtil.create('span', 'drawer-layer-label', row);
             label.textContent = def.label;
 
-            // Count span
-            var countSpan = L.DomUtil.create('span', 'drawer-layer-count', row);
+            const countSpan = L.DomUtil.create('span', 'drawer-layer-count', row);
             self._countSpans[def.id] = countSpan;
 
-            // Toggle button (+/-)
-            var isActive = def.active !== false;
-            var toggleBtn = L.DomUtil.create('button', 'layer-toggle-btn', row);
+            const isActive = def.active !== false;
+            const toggleBtn = L.DomUtil.create('button', 'layer-toggle-btn', row);
             toggleBtn.type = 'button';
-            toggleBtn.classList.add(isActive ? 'active' : 'inactive');
-            toggleBtn.textContent = isActive ? '\u2212' : '+';
-            toggleBtn.title = isActive ? 'Masquer la couche' : 'Afficher la couche';
+            setToggleState(toggleBtn, isActive, 'la couche');
 
-            row.addEventListener('click', function (e) {
+            row.addEventListener('click', e => {
                 e.preventDefault();
                 e.stopPropagation();
-                var nowActive = toggleBtn.classList.contains('active');
+                const nowActive = toggleBtn.classList.contains('active');
+                setToggleState(toggleBtn, !nowActive, 'la couche');
                 if (nowActive) {
-                    toggleBtn.classList.remove('active');
-                    toggleBtn.classList.add('inactive');
-                    toggleBtn.textContent = '+';
-                    toggleBtn.title = 'Afficher la couche';
                     if (def._leafletLayer) self._map.removeLayer(def._leafletLayer);
                     if (isContext && def.id === 'bassin-minier' && bassinMask) {
                         self._map.removeLayer(bassinMask);
                     }
                 } else {
-                    toggleBtn.classList.remove('inactive');
-                    toggleBtn.classList.add('active');
-                    toggleBtn.textContent = '\u2212';
-                    toggleBtn.title = 'Masquer la couche';
                     if (def._leafletLayer) def._leafletLayer.addTo(self._map);
                     if (isContext && def.id === 'bassin-minier' && bassinMask) {
                         bassinMask.addTo(self._map);
@@ -1070,14 +934,13 @@
         },
         open: function () {
             this._aside.classList.add('open');
-            // Recalculate maxHeight for non-collapsed groups (scrollHeight is 0 while display:none)
-            var self = this;
-            requestAnimationFrame(function () {
-                (self._groupLists || []).forEach(function (gl) {
+            const self = this;
+            requestAnimationFrame(() => {
+                for (const gl of self._groupLists) {
                     if (!gl.classList.contains('collapsed')) {
-                        gl.style.maxHeight = gl.scrollHeight + 'px';
+                        gl.style.maxHeight = `${gl.scrollHeight}px`;
                     }
-                });
+                }
             });
             // Mobile: close detail panel (mutual exclusion)
             if (window.innerWidth <= 600) {
@@ -1107,129 +970,123 @@
         _toggleBtn: null,
         _updateToggleIndicator: function () {
             if (!this._toggleBtn) return;
-            // Check if any non-default layers are toggled
-            var hasNonDefault = false;
-            this._layerGroups.forEach(function (g) {
-                g.layers.forEach(function (def) {
-                    if (!def._leafletLayer) return;
-                    var isOnMap = map.hasLayer(def._leafletLayer);
-                    var wasDefault = def.active !== false;
+            let hasNonDefault = false;
+            for (const g of this._layerGroups) {
+                for (const def of g.layers) {
+                    if (!def._leafletLayer) continue;
+                    const isOnMap = map.hasLayer(def._leafletLayer);
+                    const wasDefault = def.active !== false;
                     if (isOnMap !== wasDefault) hasNonDefault = true;
-                });
-            });
-            this._contextLayers.forEach(function (def) {
-                if (!def._leafletLayer) return;
-                var isOnMap = map.hasLayer(def._leafletLayer);
-                var wasDefault = def.active !== false;
-                if (isOnMap !== wasDefault) hasNonDefault = true;
-            });
-            if (hasNonDefault) {
-                this._toggleBtn.classList.add('has-active');
-            } else {
-                this._toggleBtn.classList.remove('has-active');
+                }
             }
+            for (const def of this._contextLayers) {
+                if (!def._leafletLayer) continue;
+                const isOnMap = map.hasLayer(def._leafletLayer);
+                const wasDefault = def.active !== false;
+                if (isOnMap !== wasDefault) hasNonDefault = true;
+            }
+            this._toggleBtn.classList.toggle('has-active', hasNonDefault);
         }
     });
 
-    // Search control with clear button
-    var searchableProps = {
-        'bassin-minier': { title: function (p) { return p.nom; }, meta: function () { return 'Perimetre'; }, text: ['nom'] },
-        'bien-inscrit': { title: function (p) { return p.nom; }, meta: function (p) { return 'Bien inscrit' + (p.section ? ' - ' + p.section : ''); }, text: ['nom', 'section', 'no_section'] },
-        'zone-tampon': { title: function (p) { return 'Zone tampon ' + (p.id || ''); }, meta: function () { return 'Zone tampon'; }, text: ['id'] },
-        'cites-minieres': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2, p.commune_3]) || 'Cite miniere'; }, text: ['nom', 'nom_2', 'commune_1', 'commune_2', 'commune_3', 'compagnie', 'proprietaire', 'element', 'objet'] },
-        'batis': { title: function (p) { return p.denomination || p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Bati minier'; }, text: ['denomination', 'nom', 'commune_1', 'commune_2', 'typologie', 'compagnie', 'proprietaire', 'element', 'objet'] },
-        'cavaliers': { title: function (p) { return 'Cavalier' + (p.id_unesco ? ' ' + p.id_unesco : ''); }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2, p.commune_3]) || 'Cavalier'; }, text: ['commune_1', 'commune_2', 'commune_3', 'commune_4', 'commune_5', 'commune_6', 'id_unesco', 'element', 'objet'] },
-        'espace-neonaturel': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Espace neo-naturel'; }, text: ['nom', 'commune_1', 'commune_2', 'element', 'objet'] },
-        'terrils': { title: function (p) { return p.nom || 'Terril ' + (p.no_terril || ''); }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Terril'; }, text: ['nom', 'no_terril', 'commune_1', 'commune_2', 'compagnie', 'element', 'objet'] },
-        'puits-de-mines': { title: function (p) { return p.fosse ? 'Fosse ' + p.fosse + (p.fosse_alias ? ' (' + p.fosse_alias + ')' : '') : 'Puits'; }, meta: function (p) { return p.commune || 'Puits de mine'; }, text: ['fosse', 'fosse_alias', 'puits', 'commune', 'compagnie', 'concession', 'id'] },
-        'communes-mbm': { title: function (p) { return p.nom; }, meta: function (p) { return 'Commune' + (p.population ? ' - pop. ' + Number(p.population).toLocaleString('fr-FR') : ''); }, text: ['nom', 'insee'] },
-        'zt-cavaliers': { title: function (p) { return p.nom || 'Cavalier (ZT)'; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Cavalier (zone tampon)'; }, text: ['nom', 'commune_1', 'commune_2', 'commune_3', 'commune_4', 'id_troncon'] },
-        'zt-cites-minieres': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Cite miniere (zone tampon)'; }, text: ['nom', 'nom_2', 'commune_1', 'commune_2', 'compagnie'] },
-        'zt-espaces-neonaturels': { title: function (p) { return p.nom; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Espace neo-naturel (zone tampon)'; }, text: ['nom', 'commune_1', 'commune_2'] },
-        'zt-terrils': { title: function (p) { return p.nom || 'Terril (ZT)'; }, meta: function (p) { return joinNotNull([p.commune_1, p.commune_2]) || 'Terril (zone tampon)'; }, text: ['nom', 'nom_usuel', 'commune_1', 'commune_2'] },
-        'zt-parvis-agricoles': { title: function (p) { return 'Parvis agricole ' + (p.id || ''); }, meta: function (p) { return p.qualite_vue || 'Parvis agricole'; }, text: ['id', 'qualite_vue', 'vue_sur'] }
+    // --- Search control ---
+
+    const searchableProps = {
+        'bassin-minier': { title: p => p.nom, meta: () => 'Perimetre', text: ['nom'] },
+        'bien-inscrit': { title: p => p.nom, meta: p => 'Bien inscrit' + (p.section ? ` - ${p.section}` : ''), text: ['nom', 'section', 'no_section'] },
+        'zone-tampon': { title: p => `Zone tampon ${p.id || ''}`, meta: () => 'Zone tampon', text: ['id'] },
+        'cites-minieres': { title: p => p.nom, meta: p => joinNotNull([p.commune_1, p.commune_2, p.commune_3]) || 'Cite miniere', text: ['nom', 'nom_2', 'commune_1', 'commune_2', 'commune_3', 'compagnie', 'proprietaire', 'element', 'objet'] },
+        'batis': { title: p => p.denomination || p.nom, meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Bati minier', text: ['denomination', 'nom', 'commune_1', 'commune_2', 'typologie', 'compagnie', 'proprietaire', 'element', 'objet'] },
+        'cavaliers': { title: p => 'Cavalier' + (p.id_unesco ? ` ${p.id_unesco}` : ''), meta: p => joinNotNull([p.commune_1, p.commune_2, p.commune_3]) || 'Cavalier', text: ['commune_1', 'commune_2', 'commune_3', 'commune_4', 'commune_5', 'commune_6', 'id_unesco', 'element', 'objet'] },
+        'espace-neonaturel': { title: p => p.nom, meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Espace neo-naturel', text: ['nom', 'commune_1', 'commune_2', 'element', 'objet'] },
+        'terrils': { title: p => p.nom || `Terril ${p.no_terril || ''}`, meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Terril', text: ['nom', 'no_terril', 'commune_1', 'commune_2', 'compagnie', 'element', 'objet'] },
+        'puits-de-mines': { title: p => p.fosse ? `Fosse ${p.fosse}${p.fosse_alias ? ` (${p.fosse_alias})` : ''}` : 'Puits', meta: p => p.commune || 'Puits de mine', text: ['fosse', 'fosse_alias', 'puits', 'commune', 'compagnie', 'concession', 'id'] },
+        'communes-mbm': { title: p => p.nom, meta: p => 'Commune' + (p.population ? ` - pop. ${Number(p.population).toLocaleString('fr-FR')}` : ''), text: ['nom', 'insee'] },
+        'zt-cavaliers': { title: p => p.nom || 'Cavalier (ZT)', meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Cavalier (zone tampon)', text: ['nom', 'commune_1', 'commune_2', 'commune_3', 'commune_4', 'id_troncon'] },
+        'zt-cites-minieres': { title: p => p.nom, meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Cite miniere (zone tampon)', text: ['nom', 'nom_2', 'commune_1', 'commune_2', 'compagnie'] },
+        'zt-espaces-neonaturels': { title: p => p.nom, meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Espace neo-naturel (zone tampon)', text: ['nom', 'commune_1', 'commune_2'] },
+        'zt-terrils': { title: p => p.nom || 'Terril (ZT)', meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Terril (zone tampon)', text: ['nom', 'nom_usuel', 'commune_1', 'commune_2'] },
+        'zt-parvis-agricoles': { title: p => `Parvis agricole ${p.id || ''}`, meta: p => p.qualite_vue || 'Parvis agricole', text: ['id', 'qualite_vue', 'vue_sur'] }
     };
 
-    // Build search index after all layers loaded
-    var searchIndex = [];
+    const searchIndex = [];
 
     function buildSearchIndex() {
-        allLayerDefs.forEach(function (def) {
-            if (!def._leafletLayer) return;
-            var config = searchableProps[def.id];
-            if (!config) return;
-            def._leafletLayer.eachLayer(function (layer) {
-                var props = layer.feature.properties;
-                var title = config.title(props) || '';
+        for (const def of allLayerDefs) {
+            if (!def._leafletLayer) continue;
+            const config = searchableProps[def.id];
+            if (!config) continue;
+            def._leafletLayer.eachLayer(layer => {
+                const props = layer.feature.properties;
+                const title = config.title(props) || '';
                 if (!title) return;
-                var searchText = config.text.map(function (key) {
-                    return props[key] ? String(props[key]) : '';
-                }).join(' ').toLowerCase();
+                const searchText = config.text
+                    .map(key => props[key] ? String(props[key]) : '')
+                    .join(' ')
+                    .toLowerCase();
                 searchIndex.push({
-                    title: title,
+                    title,
                     meta: config.meta(props),
-                    searchText: searchText,
-                    layer: layer,
+                    searchText,
+                    layer,
                     layerId: def.id,
-                    def: def
+                    def
                 });
             });
-        });
+        }
     }
 
-    var SearchControl = L.Control.extend({
+    const SearchControl = L.Control.extend({
         options: { position: 'topleft' },
         onAdd: function () {
-            var container = L.DomUtil.create('div', 'search-control');
+            const container = L.DomUtil.create('div', 'search-control');
             L.DomEvent.disableClickPropagation(container);
             L.DomEvent.disableScrollPropagation(container);
 
-            var inputWrapper = L.DomUtil.create('div', 'search-input-wrapper', container);
-            var input = L.DomUtil.create('input', '', inputWrapper);
+            const inputWrapper = L.DomUtil.create('div', 'search-input-wrapper', container);
+            const input = L.DomUtil.create('input', '', inputWrapper);
             input.type = 'text';
             input.placeholder = 'Rechercher un lieu...';
             input.setAttribute('aria-label', 'Rechercher');
 
-            // Clear button
-            var clearBtn = L.DomUtil.create('button', 'search-clear', inputWrapper);
+            const clearBtn = L.DomUtil.create('button', 'search-clear', inputWrapper);
             clearBtn.type = 'button';
             clearBtn.innerHTML = '&times;';
             clearBtn.title = 'Effacer';
             clearBtn.setAttribute('aria-label', 'Effacer la recherche');
 
-            var results = L.DomUtil.create('div', 'search-results', container);
-            var activeIndex = -1;
-            var previewLayer = null;
-            var previewLayerId = null;
+            const results = L.DomUtil.create('div', 'search-results', container);
+            let activeIndex = -1;
+            let previewLayer = null;
+            let previewLayerId = null;
+            let currentResults = [];
 
             function previewHighlight(item) {
                 previewUnhighlight();
-                if (item && item.layer) {
-                    previewLayer = item.layer;
-                    previewLayerId = item.layerId;
-                    if (previewLayer.setStyle) {
-                        previewLayer.setStyle(getHoverStyle(item.layerId));
-                        if (previewLayer.bringToFront && item.layerId !== 'bassin-minier' && item.layerId !== 'communes-mbm') {
-                            previewLayer.bringToFront();
-                        }
+                if (!item || !item.layer) return;
+                previewLayer = item.layer;
+                previewLayerId = item.layerId;
+                if (previewLayer.setStyle) {
+                    previewLayer.setStyle(getHoverStyle(item.layerId));
+                    if (previewLayer.bringToFront && item.layerId !== 'bassin-minier' && item.layerId !== 'communes-mbm') {
+                        previewLayer.bringToFront();
                     }
-                    if (previewLayer.getTooltip && previewLayer.getTooltip()) {
-                        previewLayer.openTooltip();
-                    }
+                }
+                if (previewLayer.getTooltip && previewLayer.getTooltip()) {
+                    previewLayer.openTooltip();
                 }
             }
 
             function previewUnhighlight() {
-                if (previewLayer) {
-                    if (previewLayer.setStyle && previewLayerId) {
-                        previewLayer.setStyle(styles[previewLayerId]);
-                    }
-                    if (previewLayer.getTooltip && previewLayer.getTooltip()) {
-                        previewLayer.closeTooltip();
-                    }
-                    previewLayer = null;
-                    previewLayerId = null;
+                if (!previewLayer) return;
+                if (previewLayer.setStyle && previewLayerId) {
+                    previewLayer.setStyle(styles[previewLayerId]);
                 }
+                if (previewLayer.getTooltip && previewLayer.getTooltip()) {
+                    previewLayer.closeTooltip();
+                }
+                previewLayer = null;
+                previewLayerId = null;
             }
 
             function updateClearBtn() {
@@ -1241,11 +1098,8 @@
                 }
             }
 
-            input.addEventListener('focus', function () {
-                input.classList.add('expanded');
-            });
-
-            input.addEventListener('blur', function () {
+            input.addEventListener('focus', () => input.classList.add('expanded'));
+            input.addEventListener('blur', () => {
                 if (input.value.length === 0) {
                     input.classList.remove('expanded');
                 }
@@ -1256,11 +1110,13 @@
                 results.innerHTML = '';
                 results.classList.remove('open');
                 activeIndex = -1;
+                currentResults = [];
             }
 
             function showResults(items) {
                 results.innerHTML = '';
                 activeIndex = -1;
+                currentResults = items;
                 if (items.length === 0) {
                     if (input.value.trim().length >= 2) {
                         results.innerHTML = '<div class="search-no-results">Aucun resultat</div>';
@@ -1270,28 +1126,24 @@
                     }
                     return;
                 }
-                items.forEach(function (item, idx) {
-                    var div = L.DomUtil.create('div', 'search-result-item', results);
-                    var color = styles[item.layerId].fillColor || styles[item.layerId].color;
-                    div.innerHTML = '<div class="search-result-title"><span class="search-result-layer" style="background:' + color + '"></span>' + escapeHtml(item.title) + '</div>'
-                        + '<div class="search-result-meta">' + escapeHtml(item.meta) + '</div>';
-                    div.addEventListener('click', function () {
-                        selectResult(item);
-                    });
-                    div.addEventListener('mouseenter', function () {
+                items.forEach((item, idx) => {
+                    const div = L.DomUtil.create('div', 'search-result-item', results);
+                    const color = styles[item.layerId].fillColor || styles[item.layerId].color;
+                    div.innerHTML = `<div class="search-result-title"><span class="search-result-layer" style="background:${color}"></span>${escapeHtml(item.title)}</div>`
+                        + `<div class="search-result-meta">${escapeHtml(item.meta)}</div>`;
+                    div.addEventListener('click', () => selectResult(item));
+                    div.addEventListener('mouseenter', () => {
                         setActive(idx);
                         previewHighlight(item);
                     });
-                    div.addEventListener('mouseleave', function () {
-                        previewUnhighlight();
-                    });
+                    div.addEventListener('mouseleave', () => previewUnhighlight());
                 });
                 results.classList.add('open');
             }
 
             function setActive(idx) {
-                var items = results.querySelectorAll('.search-result-item');
-                items.forEach(function (el) { el.classList.remove('active'); });
+                const items = results.querySelectorAll('.search-result-item');
+                for (const el of items) el.classList.remove('active');
                 activeIndex = idx;
                 if (idx >= 0 && idx < items.length) {
                     items[idx].classList.add('active');
@@ -1317,52 +1169,50 @@
                 }
 
                 // Open detail panel
-                var builder = detailBuilders[item.layerId];
+                const builder = detailBuilders[item.layerId];
                 if (builder) {
                     showDetail(builder(item.layer.feature.properties));
                 }
 
                 // Highlight briefly
                 if (item.layer.setStyle) {
-                    var origStyle = styles[item.layerId];
+                    const origStyle = styles[item.layerId];
                     item.layer.setStyle({ weight: 4, fillOpacity: 0.6 });
-                    setTimeout(function () {
-                        item.layer.setStyle(origStyle);
-                    }, 2000);
+                    setTimeout(() => item.layer.setStyle(origStyle), 2000);
                 }
 
                 input.blur();
             }
 
-            clearBtn.addEventListener('click', function () {
+            clearBtn.addEventListener('click', () => {
                 input.value = '';
                 clearResults();
                 updateClearBtn();
                 input.focus();
             });
 
-            var debounceTimer;
-            input.addEventListener('input', function () {
+            let debounceTimer;
+            input.addEventListener('input', () => {
                 clearTimeout(debounceTimer);
                 updateClearBtn();
-                var query = input.value.trim().toLowerCase();
+                const query = input.value.trim().toLowerCase();
                 if (query.length < 2) {
                     clearResults();
                     return;
                 }
-                debounceTimer = setTimeout(function () {
-                    var terms = query.split(/\s+/);
-                    var matches = searchIndex.filter(function (entry) {
-                        return terms.every(function (term) {
-                            return entry.searchText.indexOf(term) !== -1 || entry.title.toLowerCase().indexOf(term) !== -1;
-                        });
-                    }).slice(0, 20);
+                debounceTimer = setTimeout(() => {
+                    const terms = query.split(/\s+/);
+                    const matches = searchIndex.filter(entry =>
+                        terms.every(term =>
+                            entry.searchText.includes(term) || entry.title.toLowerCase().includes(term)
+                        )
+                    ).slice(0, 20);
                     showResults(matches);
                 }, 150);
             });
 
-            input.addEventListener('keydown', function (e) {
-                var items = results.querySelectorAll('.search-result-item');
+            input.addEventListener('keydown', e => {
+                const items = results.querySelectorAll('.search-result-item');
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
                     setActive(Math.min(activeIndex + 1, items.length - 1));
@@ -1371,82 +1221,73 @@
                     setActive(Math.max(activeIndex - 1, 0));
                 } else if (e.key === 'Enter' && activeIndex >= 0) {
                     e.preventDefault();
-                    var filtered = searchIndex.filter(function (entry) {
-                        var terms = input.value.trim().toLowerCase().split(/\s+/);
-                        return terms.every(function (term) {
-                            return entry.searchText.indexOf(term) !== -1 || entry.title.toLowerCase().indexOf(term) !== -1;
-                        });
-                    }).slice(0, 20);
-                    if (filtered[activeIndex]) selectResult(filtered[activeIndex]);
+                    if (currentResults[activeIndex]) {
+                        selectResult(currentResults[activeIndex]);
+                    }
                 } else if (e.key === 'Escape') {
                     clearResults();
                     input.blur();
                 }
             });
 
-            // Close results when clicking elsewhere
-            map.on('click', function () {
-                clearResults();
-            });
+            map.on('click', () => clearResults());
 
             return container;
         }
     });
 
-    // Bottom bar: layers toggle + search + unified zoom — all side by side
-    var BottomBarControl = L.Control.extend({
+    // --- Bottom bar: layers toggle + search + unified zoom ---
+
+    const BottomBarControl = L.Control.extend({
         options: { position: 'bottomleft' },
         onAdd: function (map) {
-            var container = L.DomUtil.create('div', 'bottom-pickers-bar');
+            const container = L.DomUtil.create('div', 'bottom-pickers-bar');
             L.DomEvent.disableClickPropagation(container);
             L.DomEvent.disableScrollPropagation(container);
 
             // Layers toggle button
-            var layersBtn = L.DomUtil.create('button', 'layers-toggle-btn', container);
+            const layersBtn = L.DomUtil.create('button', 'layers-toggle-btn', container);
             layersBtn.type = 'button';
             layersBtn.title = 'Couches';
             layersBtn.setAttribute('aria-label', 'Couches');
             layersBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
-            layersBtn.addEventListener('click', function () {
-                layersDrawer.toggle();
-            });
-            // Store reference for active indicator
+            layersBtn.addEventListener('click', () => layersDrawer.toggle());
             layersDrawer._toggleBtn = layersBtn;
 
             // Search control
-            var sc = new SearchControl();
+            const sc = new SearchControl();
             sc._map = map;
             container.appendChild(sc.onAdd(map));
 
             // Unified zoom (zoom in + full extent + zoom out)
-            var zoomBar = L.DomUtil.create('div', 'leaflet-bar leaflet-control-zoom unified-zoom', container);
+            const zoomBar = L.DomUtil.create('div', 'leaflet-bar leaflet-control-zoom unified-zoom', container);
 
-            var zoomIn = L.DomUtil.create('a', 'leaflet-control-zoom-in', zoomBar);
+            const zoomIn = L.DomUtil.create('a', 'leaflet-control-zoom-in', zoomBar);
             zoomIn.href = '#';
             zoomIn.title = 'Zoom avant';
             zoomIn.setAttribute('role', 'button');
             zoomIn.setAttribute('aria-label', 'Zoom avant');
             zoomIn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>';
 
-            var fullExtent = L.DomUtil.create('a', 'leaflet-control-full-extent', zoomBar);
+            const fullExtent = L.DomUtil.create('a', 'leaflet-control-full-extent', zoomBar);
             fullExtent.href = '#';
             fullExtent.title = 'Vue d\'ensemble';
             fullExtent.setAttribute('role', 'button');
             fullExtent.setAttribute('aria-label', 'Vue d\'ensemble');
             fullExtent.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
 
-            var zoomOut = L.DomUtil.create('a', 'leaflet-control-zoom-out', zoomBar);
+            const zoomOut = L.DomUtil.create('a', 'leaflet-control-zoom-out', zoomBar);
             zoomOut.href = '#';
             zoomOut.title = 'Zoom arrière';
             zoomOut.setAttribute('role', 'button');
             zoomOut.setAttribute('aria-label', 'Zoom arrière');
             zoomOut.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>';
 
-            L.DomEvent.on(zoomIn, 'click', function (e) {
+            L.DomEvent.on(zoomIn, 'click', e => {
                 L.DomEvent.preventDefault(e);
                 map.zoomIn();
             });
-            L.DomEvent.on(fullExtent, 'click', function (e) {
+            L.DomEvent.on(fullExtent, 'click', e => {
                 L.DomEvent.preventDefault(e);
                 hideDetail();
                 if (boundsGroup.getBounds().isValid()) {
@@ -1455,7 +1296,7 @@
                     map.setView([50.35, 2.8], 10);
                 }
             });
-            L.DomEvent.on(zoomOut, 'click', function (e) {
+            L.DomEvent.on(zoomOut, 'click', e => {
                 L.DomEvent.preventDefault(e);
                 map.zoomOut();
             });
@@ -1464,36 +1305,35 @@
         }
     });
 
-    var layersDrawer = new LayersDrawer(layerGroups, contextLayers, baseLayers);
+    // --- Initialize controls and load data ---
+
+    const layersDrawer = new LayersDrawer(layerGroups, contextLayers, baseLayers);
     layersDrawer.addTo(map);
 
     new BottomBarControl().addTo(map);
 
-    var boundsGroup = L.featureGroup();
-    var loadedCount = 0;
-    var bassinMask = null; // Inverted mask layer for bassin-minier
+    const boundsGroup = L.featureGroup();
+    let loadedCount = 0;
+    let bassinMask = null;
 
-    // Loading overlay
-    var loadingOverlay = document.getElementById('loading-overlay');
+    const loadingOverlay = document.getElementById('loading-overlay');
 
     // Dedicated pane for bassin-minier so it renders below other overlays
-    var bassinPane = map.createPane('bassinPane');
-    bassinPane.style.zIndex = 350; // above tilePane (200) but below overlayPane (400)
+    const bassinPane = map.createPane('bassinPane');
+    bassinPane.style.zIndex = 350;
 
     // Dedicated pane for the mask so it never intercepts clicks
-    var maskPane = map.createPane('maskPane');
-    maskPane.style.zIndex = 360; // just above bassinPane, below overlayPane
+    const maskPane = map.createPane('maskPane');
+    maskPane.style.zIndex = 360;
     maskPane.style.pointerEvents = 'none';
 
     // Build an inverted polygon (world exterior with hole cut for the given coordinates)
     function createMaskLayer(coordinates) {
-        var world = [
+        const world = [
             [-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]
         ];
-        // Leaflet expects [lat, lng], GeoJSON gives [lng, lat]
-        var worldLatLng = world.map(function (c) { return [c[0], c[1]]; });
-        var holeLatLng = coordinates[0].map(function (c) { return [c[1], c[0]]; });
-        return L.polygon([worldLatLng, holeLatLng], {
+        const holeLatLng = coordinates[0].map(c => [c[1], c[0]]);
+        return L.polygon([world, holeLatLng], {
             color: 'none',
             fillColor: '#000',
             fillOpacity: 0.3,
@@ -1503,57 +1343,52 @@
         });
     }
 
-    // Track currently highlighted layer for hover reset
-    var hoveredLayer = null;
+    let hoveredLayer = null;
 
     function onLayerLoaded() {
         loadedCount++;
-        if (loadedCount === allLayerDefs.length) {
-            // Update all feature counts in the layers drawer
-            allLayerDefs.forEach(function (d) {
-                if (d._featureCount !== undefined) {
-                    layersDrawer.updateCount(d.id, d._featureCount);
-                }
-            });
-            buildSearchIndex();
-            if (boundsGroup.getBounds().isValid()) {
-                map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+        if (loadedCount < allLayerDefs.length) return;
+
+        for (const d of allLayerDefs) {
+            if (d._featureCount !== undefined) {
+                layersDrawer.updateCount(d.id, d._featureCount);
             }
-            // Dismiss loading overlay
-            if (loadingOverlay) {
-                loadingOverlay.classList.add('fade-out');
-                setTimeout(function () {
-                    loadingOverlay.style.display = 'none';
-                    map.invalidateSize();
-                }, 400);
-            }
+        }
+        buildSearchIndex();
+        if (boundsGroup.getBounds().isValid()) {
+            map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+        }
+        if (loadingOverlay) {
+            loadingOverlay.classList.add('fade-out');
+            setTimeout(() => {
+                loadingOverlay.style.display = 'none';
+                map.invalidateSize();
+            }, 400);
         }
     }
 
-    allLayerDefs.forEach(function (def) {
+    for (const def of allLayerDefs) {
         fetch(def.file)
-            .then(function (response) {
-                if (!response.ok) throw new Error('HTTP ' + response.status);
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             })
-            .then(function (geojson) {
-                var layerOpts = {
-                    style: function () {
-                        return styles[def.id];
-                    },
-                    onEachFeature: function (feature, layer) {
-                        var builder = detailBuilders[def.id];
+            .then(geojson => {
+                const layerOpts = {
+                    style: () => styles[def.id],
+                    onEachFeature: (feature, layer) => {
+                        const builder = detailBuilders[def.id];
                         if (builder) {
-                            layer.on('click', function (e) {
+                            layer.on('click', e => {
                                 L.DomEvent.stopPropagation(e);
                                 showDetail(builder(feature.properties));
                             });
                         }
 
                         // Hover tooltip
-                        var ttFn = tooltipText[def.id];
+                        const ttFn = tooltipText[def.id];
                         if (ttFn) {
-                            var text = ttFn(feature.properties);
+                            const text = ttFn(feature.properties);
                             if (text) {
                                 layer.bindTooltip(text, {
                                     className: 'feature-tooltip',
@@ -1565,9 +1400,9 @@
                         }
 
                         // Hover highlight
-                        layer.on('mouseover', function () {
+                        layer.on('mouseover', () => {
                             if (hoveredLayer && hoveredLayer !== layer && hoveredLayer.setStyle) {
-                                // reset previous
+                                hoveredLayer.setStyle(styles[def.id]);
                             }
                             hoveredLayer = layer;
                             if (layer.setStyle) {
@@ -1577,7 +1412,7 @@
                                 layer.bringToFront();
                             }
                         });
-                        layer.on('mouseout', function () {
+                        layer.on('mouseout', () => {
                             if (layer.setStyle) {
                                 layer.setStyle(styles[def.id]);
                             }
@@ -1586,15 +1421,12 @@
                     }
                 };
                 if (styles[def.id] && styles[def.id].radius) {
-                    layerOpts.pointToLayer = function (feature, latlng) {
-                        return L.circleMarker(latlng, styles[def.id]);
-                    };
+                    layerOpts.pointToLayer = (_feature, latlng) => L.circleMarker(latlng, styles[def.id]);
                 }
-                var layer = L.geoJSON(geojson, layerOpts);
+                const layer = L.geoJSON(geojson, layerOpts);
                 def._leafletLayer = layer;
 
-                // Update feature count in control
-                var featureCount = geojson.features ? geojson.features.length : 0;
+                const featureCount = geojson.features ? geojson.features.length : 0;
                 def._featureCount = featureCount;
 
                 // Create inverted mask for bassin-minier
@@ -1612,14 +1444,14 @@
 
                 onLayerLoaded();
             })
-            .catch(function (err) {
-                console.warn('Failed to load ' + def.file + ':', err);
+            .catch(err => {
+                console.warn(`Failed to load ${def.file}:`, err);
                 onLayerLoaded();
             });
-    });
+    }
 
     // Add drag handle for mobile bottom sheet
-    var dragHandle = document.createElement('div');
+    const dragHandle = document.createElement('div');
     dragHandle.className = 'detail-drag-handle';
     detailPanel.insertBefore(dragHandle, detailPanel.firstChild);
 })();
