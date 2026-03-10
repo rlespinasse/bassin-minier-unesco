@@ -115,12 +115,12 @@
             opacity: 0.9
         },
         'puits-de-mines': {
-            radius: 5,
-            color: '#4A235A',
-            weight: 1.5,
-            fillColor: '#7D3C98',
-            fillOpacity: 0.7,
-            opacity: 0.9
+            radius: 3,
+            color: '#9575CD',
+            weight: 1,
+            fillColor: '#B39DDB',
+            fillOpacity: 0.5,
+            opacity: 0.7
         },
         'communes-mbm': {
             color: '#B0BEC5',
@@ -708,7 +708,7 @@
     }
 
     // Zoom-to-layer icon SVG
-    var zoomToLayerSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>';
+
 
     // Unified Layers Drawer
     var LayersDrawer = L.Control.extend({
@@ -771,56 +771,193 @@
 
             // Context layers section
             var ctxHeader = L.DomUtil.create('div', 'drawer-group-header', contentCouches);
-            var ctxSpan = L.DomUtil.create('span', '', ctxHeader);
+            var ctxToggleArrow = L.DomUtil.create('span', 'drawer-group-toggle', ctxHeader);
+            var ctxSpan = L.DomUtil.create('span', 'drawer-group-label', ctxHeader);
             ctxSpan.textContent = 'Contexte';
+
+            var ctxSomeActive = this._contextLayers.some(function (d) { return d.active !== false; });
+            var ctxGroupToggleBtn = L.DomUtil.create('button', 'layer-toggle-btn', ctxHeader);
+            ctxGroupToggleBtn.type = 'button';
+            ctxGroupToggleBtn.classList.add(ctxSomeActive ? 'active' : 'inactive');
+            ctxGroupToggleBtn.textContent = ctxSomeActive ? '\u2212' : '+';
+            ctxGroupToggleBtn.title = ctxSomeActive ? 'Masquer le groupe' : 'Afficher le groupe';
+
             var ctxList = L.DomUtil.create('div', 'drawer-group-list', contentCouches);
+            var ctxLayerToggles = [];
 
             this._contextLayers.forEach(function (def) {
-                self._buildLayerRow(ctxList, def, true);
+                var toggleBtn = self._buildLayerRow(ctxList, def, true);
+                ctxLayerToggles.push({ toggleBtn: toggleBtn, def: def });
+            });
+
+            function syncCtxGroupToggle() {
+                var anyActive = ctxLayerToggles.some(function (lt) {
+                    return lt.toggleBtn.classList.contains('active');
+                });
+                if (anyActive) {
+                    ctxGroupToggleBtn.classList.remove('inactive');
+                    ctxGroupToggleBtn.classList.add('active');
+                    ctxGroupToggleBtn.textContent = '\u2212';
+                    ctxGroupToggleBtn.title = 'Masquer le groupe';
+                } else {
+                    ctxGroupToggleBtn.classList.remove('active');
+                    ctxGroupToggleBtn.classList.add('inactive');
+                    ctxGroupToggleBtn.textContent = '+';
+                    ctxGroupToggleBtn.title = 'Afficher le groupe';
+                }
+            }
+
+            ctxLayerToggles.forEach(function (lt) {
+                lt.toggleBtn.closest('.drawer-layer-row').addEventListener('click', function () {
+                    setTimeout(syncCtxGroupToggle, 0);
+                });
+            });
+
+            ctxGroupToggleBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var nowActive = ctxGroupToggleBtn.classList.contains('active');
+                ctxLayerToggles.forEach(function (lt) {
+                    var isLayerActive = lt.toggleBtn.classList.contains('active');
+                    if (nowActive && isLayerActive) {
+                        lt.toggleBtn.classList.remove('active');
+                        lt.toggleBtn.classList.add('inactive');
+                        lt.toggleBtn.textContent = '+';
+                        lt.toggleBtn.title = 'Afficher la couche';
+                        if (lt.def._leafletLayer) self._map.removeLayer(lt.def._leafletLayer);
+                        if (lt.def.id === 'bassin-minier' && bassinMask) {
+                            self._map.removeLayer(bassinMask);
+                        }
+                    } else if (!nowActive && !isLayerActive) {
+                        lt.toggleBtn.classList.remove('inactive');
+                        lt.toggleBtn.classList.add('active');
+                        lt.toggleBtn.textContent = '\u2212';
+                        lt.toggleBtn.title = 'Masquer la couche';
+                        if (lt.def._leafletLayer) lt.def._leafletLayer.addTo(self._map);
+                        if (lt.def.id === 'bassin-minier' && bassinMask) {
+                            bassinMask.addTo(self._map);
+                        }
+                    }
+                });
+                if (!nowActive && ctxList.classList.contains('collapsed')) {
+                    ctxList.classList.remove('collapsed');
+                    ctxToggleArrow.classList.remove('collapsed');
+                    ctxList.style.maxHeight = ctxList.scrollHeight + 'px';
+                }
+                syncCtxGroupToggle();
+                self._updateToggleIndicator();
+            });
+
+            // Collapse/expand for context group
+            if (!self._groupLists) self._groupLists = [];
+            self._groupLists.push(ctxList);
+
+            ctxToggleArrow.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (ctxList.classList.contains('collapsed')) {
+                    ctxList.classList.remove('collapsed');
+                    ctxToggleArrow.classList.remove('collapsed');
+                    ctxList.style.maxHeight = ctxList.scrollHeight + 'px';
+                } else {
+                    ctxList.style.maxHeight = ctxList.scrollHeight + 'px';
+                    ctxList.offsetHeight; // eslint-disable-line no-unused-expressions
+                    ctxList.classList.add('collapsed');
+                    ctxToggleArrow.classList.add('collapsed');
+                }
             });
 
             // Overlay groups
             this._layerGroups.forEach(function (g) {
-                var groupHeader = L.DomUtil.create('label', 'drawer-group-header', contentCouches);
-                var groupInput = L.DomUtil.create('input', '', groupHeader);
-                groupInput.type = 'checkbox';
-                groupInput.checked = g.layers.some(function (d) { return d.active !== false; });
+                var groupHeader = L.DomUtil.create('div', 'drawer-group-header', contentCouches);
 
                 var toggleArrow = L.DomUtil.create('span', 'drawer-group-toggle', groupHeader);
-                toggleArrow.textContent = '\u25BC';
 
-                var groupSpan = L.DomUtil.create('span', '', groupHeader);
+                var groupSpan = L.DomUtil.create('span', 'drawer-group-label', groupHeader);
                 groupSpan.textContent = ' ' + g.group;
 
+                // Group toggle button (+/-)
+                var someActive = g.layers.some(function (d) { return d.active !== false; });
+                var groupToggleBtn = L.DomUtil.create('button', 'layer-toggle-btn group-toggle-btn', groupHeader);
+                groupToggleBtn.type = 'button';
+                groupToggleBtn.classList.add(someActive ? 'active' : 'inactive');
+                groupToggleBtn.textContent = someActive ? '\u2212' : '+';
+                groupToggleBtn.title = someActive ? 'Masquer le groupe' : 'Afficher le groupe';
+
                 var groupList = L.DomUtil.create('div', 'drawer-group-list', contentCouches);
-                var layerInputs = [];
+                var layerToggles = [];
 
                 g.layers.forEach(function (def) {
-                    var input = self._buildLayerRow(groupList, def, false);
-                    layerInputs.push({ input: input, def: def });
+                    var toggleBtn = self._buildLayerRow(groupList, def, false);
+                    layerToggles.push({ toggleBtn: toggleBtn, def: def });
+                });
 
-                    input.addEventListener('change', function () {
-                        var allChecked = layerInputs.every(function (li) { return li.input.checked; });
-                        var someChecked = layerInputs.some(function (li) { return li.input.checked; });
-                        groupInput.checked = someChecked;
-                        groupInput.indeterminate = someChecked && !allChecked;
+                // Sync group toggle when individual layers change
+                function syncGroupToggle() {
+                    var anyActive = layerToggles.some(function (lt) {
+                        return lt.toggleBtn.classList.contains('active');
+                    });
+                    if (anyActive) {
+                        groupToggleBtn.classList.remove('inactive');
+                        groupToggleBtn.classList.add('active');
+                        groupToggleBtn.textContent = '\u2212';
+                        groupToggleBtn.title = 'Masquer le groupe';
+                    } else {
+                        groupToggleBtn.classList.remove('active');
+                        groupToggleBtn.classList.add('inactive');
+                        groupToggleBtn.textContent = '+';
+                        groupToggleBtn.title = 'Afficher le groupe';
+                    }
+                }
+
+                layerToggles.forEach(function (lt) {
+                    lt.toggleBtn.closest('.drawer-layer-row').addEventListener('click', function () {
+                        // Defer to let the layer toggle update first
+                        setTimeout(syncGroupToggle, 0);
                     });
                 });
 
+                // Group toggle click: toggle all layers in the group
+                groupToggleBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var nowActive = groupToggleBtn.classList.contains('active');
+                    layerToggles.forEach(function (lt) {
+                        var isLayerActive = lt.toggleBtn.classList.contains('active');
+                        if (nowActive && isLayerActive) {
+                            // Turn off
+                            lt.toggleBtn.classList.remove('active');
+                            lt.toggleBtn.classList.add('inactive');
+                            lt.toggleBtn.textContent = '+';
+                            lt.toggleBtn.title = 'Afficher la couche';
+                            if (lt.def._leafletLayer) self._map.removeLayer(lt.def._leafletLayer);
+                        } else if (!nowActive && !isLayerActive) {
+                            // Turn on
+                            lt.toggleBtn.classList.remove('inactive');
+                            lt.toggleBtn.classList.add('active');
+                            lt.toggleBtn.textContent = '\u2212';
+                            lt.toggleBtn.title = 'Masquer la couche';
+                            if (lt.def._leafletLayer) lt.def._leafletLayer.addTo(self._map);
+                        }
+                    });
+                    // Auto-expand group when enabling layers
+                    if (!nowActive && groupList.classList.contains('collapsed')) {
+                        groupList.classList.remove('collapsed');
+                        toggleArrow.classList.remove('collapsed');
+                        groupList.style.maxHeight = groupList.scrollHeight + 'px';
+                    }
+                    syncGroupToggle();
+                    self._updateToggleIndicator();
+                });
+
                 // Collapse/expand behavior
-                var isCollapsed = !g.layers.some(function (d) { return d.active !== false; });
+                var isCollapsed = !someActive;
                 if (isCollapsed) {
                     groupList.classList.add('collapsed');
                     toggleArrow.classList.add('collapsed');
                 }
-                requestAnimationFrame(function () {
-                    if (!groupList.classList.contains('collapsed')) {
-                        groupList.style.maxHeight = groupList.scrollHeight + 'px';
-                    }
-                });
+                // Track non-collapsed group lists for maxHeight recalc on open
+                if (!self._groupLists) self._groupLists = [];
+                self._groupLists.push(groupList);
 
                 toggleArrow.addEventListener('click', function (e) {
-                    e.preventDefault();
                     e.stopPropagation();
                     if (groupList.classList.contains('collapsed')) {
                         groupList.classList.remove('collapsed');
@@ -832,21 +969,6 @@
                         groupList.classList.add('collapsed');
                         toggleArrow.classList.add('collapsed');
                     }
-                });
-
-                groupInput.addEventListener('change', function () {
-                    var checked = groupInput.checked;
-                    groupInput.indeterminate = false;
-                    layerInputs.forEach(function (li) {
-                        li.input.checked = checked;
-                        if (!li.def._leafletLayer) return;
-                        if (checked) {
-                            li.def._leafletLayer.addTo(self._map);
-                        } else {
-                            self._map.removeLayer(li.def._leafletLayer);
-                        }
-                    });
-                    self._updateToggleIndicator();
                 });
             });
 
@@ -897,13 +1019,9 @@
         },
         _buildLayerRow: function (container, def, isContext) {
             var self = this;
-            var row = L.DomUtil.create('label', 'drawer-layer-row', container);
+            var row = L.DomUtil.create('div', 'drawer-layer-row', container);
             var color = styles[def.id].fillColor || styles[def.id].color;
             row.style.setProperty('--layer-color', color);
-
-            var cb = L.DomUtil.create('input', '', row);
-            cb.type = 'checkbox';
-            cb.checked = def.active !== false;
 
             row.appendChild(createSwatch(def.id));
 
@@ -914,45 +1032,53 @@
             var countSpan = L.DomUtil.create('span', 'drawer-layer-count', row);
             self._countSpans[def.id] = countSpan;
 
-            // Zoom-to-layer button
-            var zoomBtn = L.DomUtil.create('button', 'layer-zoom-btn', row);
-            zoomBtn.type = 'button';
-            zoomBtn.title = 'Centrer sur la couche';
-            zoomBtn.setAttribute('aria-label', 'Centrer sur ' + def.label);
-            zoomBtn.innerHTML = zoomToLayerSvg;
-            zoomBtn.addEventListener('click', function (e) {
+            // Toggle button (+/-)
+            var isActive = def.active !== false;
+            var toggleBtn = L.DomUtil.create('button', 'layer-toggle-btn', row);
+            toggleBtn.type = 'button';
+            toggleBtn.classList.add(isActive ? 'active' : 'inactive');
+            toggleBtn.textContent = isActive ? '\u2212' : '+';
+            toggleBtn.title = isActive ? 'Masquer la couche' : 'Afficher la couche';
+
+            row.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-                if (def._leafletLayer && def._leafletLayer.getBounds) {
-                    var bounds = def._leafletLayer.getBounds();
-                    if (bounds.isValid()) {
-                        self._map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
-                    }
-                }
-            });
-
-            cb.addEventListener('change', function () {
-                if (!def._leafletLayer) return;
-                if (cb.checked) {
-                    def._leafletLayer.addTo(self._map);
-                } else {
-                    self._map.removeLayer(def._leafletLayer);
-                }
-                // Sync bassin-minier mask
-                if (isContext && def.id === 'bassin-minier' && bassinMask) {
-                    if (cb.checked) {
-                        bassinMask.addTo(self._map);
-                    } else {
+                var nowActive = toggleBtn.classList.contains('active');
+                if (nowActive) {
+                    toggleBtn.classList.remove('active');
+                    toggleBtn.classList.add('inactive');
+                    toggleBtn.textContent = '+';
+                    toggleBtn.title = 'Afficher la couche';
+                    if (def._leafletLayer) self._map.removeLayer(def._leafletLayer);
+                    if (isContext && def.id === 'bassin-minier' && bassinMask) {
                         self._map.removeLayer(bassinMask);
+                    }
+                } else {
+                    toggleBtn.classList.remove('inactive');
+                    toggleBtn.classList.add('active');
+                    toggleBtn.textContent = '\u2212';
+                    toggleBtn.title = 'Masquer la couche';
+                    if (def._leafletLayer) def._leafletLayer.addTo(self._map);
+                    if (isContext && def.id === 'bassin-minier' && bassinMask) {
+                        bassinMask.addTo(self._map);
                     }
                 }
                 self._updateToggleIndicator();
             });
 
-            return cb;
+            return toggleBtn;
         },
         open: function () {
             this._aside.classList.add('open');
+            // Recalculate maxHeight for non-collapsed groups (scrollHeight is 0 while display:none)
+            var self = this;
+            requestAnimationFrame(function () {
+                (self._groupLists || []).forEach(function (gl) {
+                    if (!gl.classList.contains('collapsed')) {
+                        gl.style.maxHeight = gl.scrollHeight + 'px';
+                    }
+                });
+            });
             // Mobile: close detail panel (mutual exclusion)
             if (window.innerWidth <= 600) {
                 hideDetail();
