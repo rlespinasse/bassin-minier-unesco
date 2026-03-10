@@ -218,6 +218,14 @@
 
     detailClose.addEventListener('click', hideDetail);
 
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') hideDetail();
+    });
+
+    map.on('click', function () {
+        hideDetail();
+    });
+
     // Helper: build MH protection rows
     function mhRows(p) {
         var rows = [];
@@ -1222,6 +1230,7 @@
             });
             L.DomEvent.on(fullExtent, 'click', function (e) {
                 L.DomEvent.preventDefault(e);
+                hideDetail();
                 if (boundsGroup.getBounds().isValid()) {
                     map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
                 } else {
@@ -1316,7 +1325,8 @@
                     onEachFeature: function (feature, layer) {
                         var builder = detailBuilders[def.id];
                         if (builder) {
-                            layer.on('click', function () {
+                            layer.on('click', function (e) {
+                                L.DomEvent.stopPropagation(e);
                                 showDetail(builder(feature.properties));
                             });
                         }
