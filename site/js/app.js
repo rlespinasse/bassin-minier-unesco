@@ -5,14 +5,15 @@
     var map = L.map('map').setView([50.35, 2.8], 10);
 
     // Base layers
-    var osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    var ignPlan = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+        attribution: '&copy; <a href="https://www.ign.fr/">IGN</a>',
         maxZoom: 18
     });
 
-    var osmTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
-        maxZoom: 17
+    var cartoPositron = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
     });
 
     var esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -21,24 +22,24 @@
     });
 
     var baseLayers = {
-        'Plan': osmStandard,
-        'Relief': osmTopo,
+        'IGN': ignPlan,
+        'Clair': cartoPositron,
         'Satellite': esriSatellite
     };
 
     var baseLayerThumbnails = {
-        'Plan': 'https://a.tile.openstreetmap.org/10/523/340.png',
-        'Relief': 'https://a.tile.opentopomap.org/10/523/340.png',
-        'Satellite': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/10/340/523'
+        'IGN': 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX=10&TILEROW=345&TILECOL=520',
+        'Clair': 'https://a.basemaps.cartocdn.com/light_all/10/520/345.png',
+        'Satellite': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/10/345/520'
     };
 
     var baseLayerAttributions = {
-        'Plan': 'Fond de carte &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
-        'Relief': 'Fond de carte &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, &copy; <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a>',
+        'IGN': 'Fond de carte &copy; <a href="https://www.ign.fr/" target="_blank" rel="noopener">IGN</a>',
+        'Clair': 'Fond de carte &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, &copy; <a href="https://carto.com/" target="_blank" rel="noopener">CARTO</a>',
         'Satellite': 'Fond de carte &copy; <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>, Maxar, Earthstar Geographics'
     };
 
-    osmStandard.addTo(map);
+    ignPlan.addTo(map);
 
     map.on('baselayerchange', function (e) {
         var el = document.getElementById('base-layer-attribution');
