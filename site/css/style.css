@@ -94,11 +94,15 @@ main {
 .detail-panel {
     display: none;
     width: 340px;
-    flex-shrink: 0;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
     background: #fff;
     border-left: 1px solid #ddd;
     overflow-y: auto;
-    position: relative;
+    z-index: 1500;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
 }
 
 .detail-panel.open {
