@@ -640,16 +640,12 @@
             ]
         },
         {
-            group: 'Zone tampon', layers: [
-                { id: 'zt-cavaliers', label: 'Cavaliers', file: 'data/zt-cavaliers.geojson', active: false },
-                { id: 'zt-cites-minieres', label: 'Cites minieres', file: 'data/zt-cites-minieres.geojson', active: false },
-                { id: 'zt-espaces-neonaturels', label: 'Espaces neo-naturels', file: 'data/zt-espaces-neonaturels.geojson', active: false },
-                { id: 'zt-terrils', label: 'Terrils', file: 'data/zt-terrils.geojson', active: false },
-                { id: 'zt-parvis-agricoles', label: 'Parvis agricoles', file: 'data/zt-parvis-agricoles.geojson', active: false }
-            ]
-        },
-        {
-            group: 'Inventaire minier', layers: [
+            group: 'Autres éléments du bassin minier', layers: [
+                { id: 'zt-cavaliers', label: 'Cavaliers (zone tampon)', file: 'data/zt-cavaliers.geojson', active: false },
+                { id: 'zt-cites-minieres', label: 'Cites minieres (zone tampon)', file: 'data/zt-cites-minieres.geojson', active: false },
+                { id: 'zt-espaces-neonaturels', label: 'Espaces neo-naturels (zone tampon)', file: 'data/zt-espaces-neonaturels.geojson', active: false },
+                { id: 'zt-terrils', label: 'Terrils (zone tampon)', file: 'data/zt-terrils.geojson', active: false },
+                { id: 'zt-parvis-agricoles', label: 'Parvis agricoles (zone tampon)', file: 'data/zt-parvis-agricoles.geojson', active: false },
                 { id: 'puits-de-mines', label: 'Puits de mines', file: 'data/puits-de-mines.geojson', active: false }
             ]
         },
