@@ -25,9 +25,12 @@
     --radius-md: 8px;
     --radius-lg: 12px;
 
-    /* z-index scale */
+    /* z-index scale (map panes: largest features → lowest z) */
     --z-bassin-pane: 350;
     --z-mask-pane: 360;
+    --z-large-features-pane: 370;
+    --z-medium-features-pane: 380;
+    --z-small-features-pane: 390;
     --z-search-results: 1000;
     --z-panel: 1500;
     --z-loading: 2000;

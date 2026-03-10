@@ -1327,6 +1327,33 @@
     maskPane.style.zIndex = 360;
     maskPane.style.pointerEvents = 'none';
 
+    // Layered panes so smaller features render above larger ones (and stay clickable)
+    const largeFeaturesPane = map.createPane('largeFeaturesPane');
+    largeFeaturesPane.style.zIndex = 370;
+
+    const mediumFeaturesPane = map.createPane('mediumFeaturesPane');
+    mediumFeaturesPane.style.zIndex = 380;
+
+    const smallFeaturesPane = map.createPane('smallFeaturesPane');
+    smallFeaturesPane.style.zIndex = 390;
+
+    // Map layer IDs to their rendering pane (largest → lowest z-index)
+    const layerPanes = {
+        'zone-tampon': 'largeFeaturesPane',
+        'bien-inscrit': 'largeFeaturesPane',
+        'communes-mbm': 'largeFeaturesPane',
+        'zt-cavaliers': 'largeFeaturesPane',
+        'zt-cites-minieres': 'largeFeaturesPane',
+        'zt-espaces-neonaturels': 'largeFeaturesPane',
+        'zt-terrils': 'largeFeaturesPane',
+        'zt-parvis-agricoles': 'largeFeaturesPane',
+        'cites-minieres': 'mediumFeaturesPane',
+        'espace-neonaturel': 'mediumFeaturesPane',
+        'cavaliers': 'smallFeaturesPane',
+        'terrils': 'smallFeaturesPane',
+        'batis': 'smallFeaturesPane',
+    };
+
     // Build an inverted polygon (world exterior with hole cut for the given coordinates)
     function createMaskLayer(coordinates) {
         const world = [
@@ -1374,8 +1401,9 @@
                 return response.json();
             })
             .then(geojson => {
+                const paneOpt = layerPanes[def.id] ? { pane: layerPanes[def.id] } : {};
                 const layerOpts = {
-                    style: () => styles[def.id],
+                    style: () => ({ ...styles[def.id], ...paneOpt }),
                     onEachFeature: (feature, layer) => {
                         const builder = detailBuilders[def.id];
                         if (builder) {
@@ -1421,7 +1449,7 @@
                     }
                 };
                 if (styles[def.id] && styles[def.id].radius) {
-                    layerOpts.pointToLayer = (_feature, latlng) => L.circleMarker(latlng, styles[def.id]);
+                    layerOpts.pointToLayer = (_feature, latlng) => L.circleMarker(latlng, { ...styles[def.id], ...paneOpt });
                 }
                 const layer = L.geoJSON(geojson, layerOpts);
                 def._leafletLayer = layer;
