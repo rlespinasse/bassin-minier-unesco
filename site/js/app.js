@@ -56,6 +56,10 @@
         return rawHtml(`<a href="#" class="cross-link" data-link-type="element" data-link-value="${escapeHtml(elementId)}">${escapeHtml(elementId)}<span class="cross-link-icon"> \u21AA</span></a>`);
     }
 
+    function featureLink(layerId, featureIndex, displayText) {
+        return `<a href="#" class="cross-link" data-link-type="feature" data-link-layer="${escapeHtml(layerId)}" data-link-value="${featureIndex}">${escapeHtml(displayText)}<span class="cross-link-icon"> \u21AA</span></a>`;
+    }
+
     /**
      * Set a toggle button's visual state.
      * @param {HTMLElement} btn - The button element
@@ -580,6 +584,36 @@
                     setTimeout(() => m.layer.setStyle(orig), 4000);
                 }
             }
+        } else if (type === 'feature') {
+            const targetLayerId = link.dataset.linkLayer;
+            const targetIndex = parseInt(link.dataset.linkValue, 10);
+            const def = allLayerDefs.find(d => d.id === targetLayerId);
+            if (!def || !def._leafletLayer) return;
+            let found = null;
+            let idx = 0;
+            def._leafletLayer.eachLayer(lyr => {
+                if (idx === targetIndex) found = lyr;
+                idx++;
+            });
+            if (!found) return;
+            ensureLayerVisible(targetLayerId);
+            if (found.getBounds) {
+                map.fitBounds(found.getBounds(), { padding: [50, 50], maxZoom: 16 });
+            } else if (found.getLatLng) {
+                map.setView(found.getLatLng(), 16);
+            }
+            const builder = detailBuilders[targetLayerId];
+            if (builder) {
+                selectedFeatureInfo = { layerId: targetLayerId, featureIndex: targetIndex };
+                showDetail(builder(found.feature.properties));
+                updateHash();
+            }
+            if (found.setStyle) {
+                const orig = styles[targetLayerId];
+                if (found.bringToFront) found.bringToFront();
+                found.setStyle({ weight: 4, fillOpacity: 0.5, color: '#e57373' });
+                setTimeout(() => found.setStyle(orig), 2500);
+            }
         }
     });
 
@@ -645,6 +679,18 @@
         return html;
     }
 
+    function buildReverseLinksSection(data, sectionLabel) {
+        if (!data) return null;
+        const rows = [];
+        for (const [layerId, items] of Object.entries(data)) {
+            const def = allLayerDefs.find(d => d.id === layerId);
+            const layerLabel = def ? def.label : layerId;
+            const links = items.map(item => featureLink(layerId, item.index, item.label));
+            rows.push([layerLabel, rawHtml(links.join(', '))]);
+        }
+        return rows.length ? { label: sectionLabel, rows } : null;
+    }
+
     // --- Detail builders per layer ---
 
     const detailBuilders = {
@@ -657,21 +703,26 @@
             },
             { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
         ]),
-        'bien-inscrit': p => buildDetail(p.nom || 'Bien inscrit UNESCO', 'bien-inscrit', [
-            {
-                label: 'Identification', rows: [
-                    p.section && ['Section', p.section],
-                    p.no_section && ['N° Section', p.no_section],
-                    p.no_element && ['Element', p.no_element]
-                ]
-            },
-            {
-                label: 'Caracteristiques', rows: [
-                    p.surface_ha && ['Surface', `${p.surface_ha} ha`]
-                ]
-            },
-            { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
-        ]),
+        'bien-inscrit': p => {
+            const groups = [
+                {
+                    label: 'Identification', rows: [
+                        p.section && ['Section', p.section],
+                        p.no_section && ['N° Section', p.no_section],
+                        p.no_element && ['Element', p.no_element]
+                    ]
+                },
+                {
+                    label: 'Caracteristiques', rows: [
+                        p.surface_ha && ['Surface', `${p.surface_ha} ha`]
+                    ]
+                }
+            ];
+            const rl = reverseLinks && p.no_element ? buildReverseLinksSection(reverseLinks.elements[String(p.no_element)], 'Elements rattaches') : null;
+            if (rl) groups.push(rl);
+            groups.push({ label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] });
+            return buildDetail(p.nom || 'Bien inscrit UNESCO', 'bien-inscrit', groups);
+        },
         'zone-tampon': p => buildDetail('Zone tampon', 'zone-tampon', [
             {
                 label: 'Identification', rows: [
@@ -783,44 +834,54 @@
             },
             { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
         ]),
-        'terrils': p => buildDetail(p.nom || 'Terril', 'terrils', [
-            {
-                label: 'Localisation', rows: [
-                    p.commune_1 && ['Commune', communeLinks(p, 'commune_1', 'commune_2', 'commune_3')]
-                ]
-            },
-            {
-                label: 'Identification', rows: [
-                    p.no_terril && ['N\u00b0 Terril', p.no_terril],
-                    p.compagnie && ['Compagnie', p.compagnie],
-                    p.groupe && ['Groupe', p.groupe],
-                    p.id_unesco && ['ID UNESCO', p.id_unesco],
-                    p.element && ['Element', elementLink(p.element)],
-                    p.objet && ['Objet', p.objet]
-                ]
-            },
-            {
-                label: 'Caracteristiques', rows: [
-                    p.forme && ['Forme', p.forme]
-                ]
-            },
-            { label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] }
-        ]),
-        'communes-mbm': p => buildDetail(p.nom || 'Commune', 'communes-mbm', [
-            {
-                label: 'Identification', rows: [
-                    p.insee && ['INSEE', p.insee],
-                    p.statut && ['Statut', p.statut]
-                ]
-            },
-            {
-                label: 'Caracteristiques', rows: [
-                    p.population && ['Population', Number(p.population).toLocaleString('fr-FR')],
-                    p.surface_km2 && ['Surface', `${Number(p.surface_km2).toFixed(1)} km\u00b2`]
-                ]
-            },
-            { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
-        ]),
+        'terrils': p => {
+            const groups = [
+                {
+                    label: 'Localisation', rows: [
+                        p.commune_1 && ['Commune', communeLinks(p, 'commune_1', 'commune_2', 'commune_3')]
+                    ]
+                },
+                {
+                    label: 'Identification', rows: [
+                        p.no_terril && ['N\u00b0 Terril', p.no_terril],
+                        p.compagnie && ['Compagnie', p.compagnie],
+                        p.groupe && ['Groupe', p.groupe],
+                        p.id_unesco && ['ID UNESCO', p.id_unesco],
+                        p.element && ['Element', elementLink(p.element)],
+                        p.objet && ['Objet', p.objet]
+                    ]
+                },
+                {
+                    label: 'Caracteristiques', rows: [
+                        p.forme && ['Forme', p.forme]
+                    ]
+                }
+            ];
+            const rl = reverseLinks && p.no_terril ? buildReverseLinksSection(reverseLinks.terrils[p.no_terril], 'Vue depuis') : null;
+            if (rl) groups.push(rl);
+            groups.push({ label: 'Liens', rows: [sourceRow(dataGouvSources.patrimoine)] });
+            return buildDetail(p.nom || 'Terril', 'terrils', groups);
+        },
+        'communes-mbm': p => {
+            const groups = [
+                {
+                    label: 'Identification', rows: [
+                        p.insee && ['INSEE', p.insee],
+                        p.statut && ['Statut', p.statut]
+                    ]
+                },
+                {
+                    label: 'Caracteristiques', rows: [
+                        p.population && ['Population', Number(p.population).toLocaleString('fr-FR')],
+                        p.surface_km2 && ['Surface', `${Number(p.surface_km2).toFixed(1)} km\u00b2`]
+                    ]
+                }
+            ];
+            const rl = reverseLinks && p.nom ? buildReverseLinksSection(reverseLinks.communes[normalizeText(p.nom)], 'Patrimoine de la commune') : null;
+            if (rl) groups.push(rl);
+            groups.push({ label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] });
+            return buildDetail(p.nom || 'Commune', 'communes-mbm', groups);
+        },
         'zt-cavaliers': p => {
             const cl = communeLinks(p, 'commune_1', 'commune_2', 'commune_3', 'commune_4');
             return buildDetail(p.nom || 'Cavalier (zone tampon)', 'zt-cavaliers', [
@@ -873,7 +934,7 @@
         'zt-terrils': p => {
             let nom = p.nom || 'Terril (zone tampon)';
             if (p.nom_usuel) nom += ` (${p.nom_usuel})`;
-            return buildDetail(nom, 'zt-terrils', [
+            const groups = [
                 {
                     label: 'Localisation', rows: [
                         p.commune_1 && ['Commune', communeLinks(p, 'commune_1', 'commune_2', 'commune_3')]
@@ -888,9 +949,12 @@
                     label: 'Caracteristiques', rows: [
                         p.forme && ['Forme', p.forme]
                     ]
-                },
-                { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
-            ]);
+                }
+            ];
+            const rl = reverseLinks && p.id ? buildReverseLinksSection(reverseLinks.terrils[String(p.id)], 'Vue depuis') : null;
+            if (rl) groups.push(rl);
+            groups.push({ label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] });
+            return buildDetail(nom, 'zt-terrils', groups);
         },
         'zt-parvis-agricoles': p => buildDetail('Parvis agricole', 'zt-parvis-agricoles', [
             {
@@ -1773,6 +1837,7 @@
 
     let hoveredLayer = null;
     const communeIndex = new Map();
+    let reverseLinks = null;
 
     // --- URL hash state ---
 
@@ -2023,6 +2088,11 @@
             }, 400);
         }
     }
+
+    fetch('data/reverse-links.json')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { reverseLinks = data; })
+        .catch(() => { /* reverse links unavailable */ });
 
     for (const def of allLayerDefs) {
         fetch(def.file)

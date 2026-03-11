@@ -20,7 +20,7 @@ install:
 
 # Download and convert all data sources to GeoJSON
 [group('data')]
-convert: convert-wfs convert-shapefiles enrich
+convert: convert-wfs convert-shapefiles enrich reverse-links
 
 # Download from WFS endpoints and convert to GeoJSON
 [group('data')]
@@ -36,6 +36,11 @@ convert-shapefiles:
 [group('data')]
 enrich:
     {{ python }} scripts/enrich_geojson.py
+
+# Build reverse-links.json (bidirectional lookups between features)
+[group('data')]
+reverse-links:
+    {{ python }} scripts/build_reverse_links.py
 
 # Remove generated GeoJSON files
 [group('data')]
@@ -82,6 +87,7 @@ check:
         zt-espaces-neonaturels.geojson
         zt-terrils.geojson
         zt-parvis-agricoles.geojson
+        reverse-links.json
     )
     missing=0
     for f in "${files[@]}"; do
