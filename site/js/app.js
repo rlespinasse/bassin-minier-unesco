@@ -2386,4 +2386,36 @@
     const dragHandle = document.createElement('div');
     dragHandle.className = 'drag-handle';
     detailPanel.insertBefore(dragHandle, detailPanel.firstChild);
+
+    // Add resize handle for desktop side panel
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    detailPanel.appendChild(resizeHandle);
+
+    const MIN_PANEL_WIDTH = 340;
+    const MAX_PANEL_WIDTH = 700;
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+        if (window.innerWidth <= 600) return;
+        e.preventDefault();
+        detailPanel.classList.add('resizing');
+        const startX = e.clientX;
+        const startWidth = detailPanel.offsetWidth;
+
+        function onMouseMove(e) {
+            const delta = startX - e.clientX;
+            const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, startWidth + delta));
+            detailPanel.style.width = newWidth + 'px';
+            map.invalidateSize();
+        }
+
+        function onMouseUp() {
+            detailPanel.classList.remove('resizing');
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
 })();

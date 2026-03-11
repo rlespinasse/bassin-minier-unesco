@@ -207,6 +207,22 @@ main {
     display: block;
 }
 
+.detail-panel .resize-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 1;
+}
+
+.detail-panel .resize-handle:hover,
+.detail-panel.resizing .resize-handle {
+    background: var(--color-brand);
+    opacity: 0.3;
+}
+
 #detail-content {
     padding: 1rem 1.25rem;
     font-size: 0.85rem;
@@ -710,6 +726,14 @@ main {
 .layer-zt-terrils { fill: url(#pattern-zt-terrils) !important; }
 .layer-zt-parvis-agricoles { fill: url(#pattern-zt-parvis-agricoles) !important; }
 
+/* --- Large screens --- */
+
+@media (min-width: 1200px) {
+    .detail-panel {
+        width: 440px;
+    }
+}
+
 /* --- Mobile --- */
 
 @media (max-width: 600px) {
@@ -773,6 +797,10 @@ main {
 
     .detail-panel .drag-handle {
         display: block;
+    }
+
+    .detail-panel .resize-handle {
+        display: none;
     }
 
     /* Layers drawer as bottom sheet on mobile */
