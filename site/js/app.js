@@ -115,7 +115,7 @@
 
     // --- Map initialization ---
 
-    const map = L.map('map', { zoomControl: false }).setView([50.35, 2.8], 10);
+    const map = L.map('map', { zoomControl: false, zoomSnap: 0.5 }).setView([50.35, 2.8], 10);
 
     // Base layers
     const ignPlan = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
@@ -1926,8 +1926,9 @@
                 L.DomEvent.preventDefault(e);
                 trackEvent('event/view/full-extent', 'Full extent');
                 hideDetail();
-                if (boundsGroup.getBounds().isValid()) {
-                    map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+                const bassinDef = allLayerDefs.find(d => d.id === 'bassin-minier');
+                if (bassinDef && bassinDef._leafletLayer) {
+                    map.fitBounds(bassinDef._leafletLayer.getBounds(), { paddingTopLeft: [20, 80], paddingBottomRight: [20, 20] });
                 } else {
                     map.setView([50.35, 2.8], 10);
                 }
@@ -2151,9 +2152,10 @@
             c.setAttribute('aria-pressed', isMatch);
         });
 
-        // Restore default view
-        if (boundsGroup.getBounds().isValid()) {
-            map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+        // Restore default view centered on bassin minier
+        const bassinDef = allLayerDefs.find(d => d.id === 'bassin-minier');
+        if (bassinDef && bassinDef._leafletLayer) {
+            map.fitBounds(bassinDef._leafletLayer.getBounds(), { paddingTopLeft: [20, 80], paddingBottomRight: [20, 20] });
         } else {
             map.setView([50.35, 2.8], 10);
         }
@@ -2237,8 +2239,13 @@
             // Restore map view
             if (initialHashState.lat !== undefined) {
                 map.setView([initialHashState.lat, initialHashState.lng], initialHashState.zoom);
-            } else if (boundsGroup.getBounds().isValid()) {
-                map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+            } else {
+                const bassinDef = allLayerDefs.find(d => d.id === 'bassin-minier');
+                if (bassinDef && bassinDef._leafletLayer) {
+                    map.fitBounds(bassinDef._leafletLayer.getBounds(), { paddingTopLeft: [20, 80], paddingBottomRight: [20, 20] });
+                } else if (boundsGroup.getBounds().isValid()) {
+                    map.fitBounds(boundsGroup.getBounds(), { paddingTopLeft: [20, 80], paddingBottomRight: [20, 20] });
+                }
             }
 
             // Restore selected feature
@@ -2261,8 +2268,11 @@
                 }
             }
         } else {
-            if (boundsGroup.getBounds().isValid()) {
-                map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+            const bassinDef = allLayerDefs.find(d => d.id === 'bassin-minier');
+            if (bassinDef && bassinDef._leafletLayer) {
+                map.fitBounds(bassinDef._leafletLayer.getBounds(), { paddingTopLeft: [20, 80], paddingBottomRight: [20, 20] });
+            } else if (boundsGroup.getBounds().isValid()) {
+                map.fitBounds(boundsGroup.getBounds(), { paddingTopLeft: [20, 80], paddingBottomRight: [20, 20] });
             }
         }
 
