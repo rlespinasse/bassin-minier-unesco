@@ -571,12 +571,13 @@
                 showDetail(elBuilder(first.layer.feature.properties));
                 updateHash();
             }
-            // Brief highlight all matches
+            // Highlight all matches
             for (const m of matches) {
                 if (m.layer.setStyle) {
                     const orig = styles[m.layerId];
-                    m.layer.setStyle({ weight: 4, fillOpacity: 0.6, color: '#e57373' });
-                    setTimeout(() => m.layer.setStyle(orig), 3000);
+                    if (m.layer.bringToFront) m.layer.bringToFront();
+                    m.layer.setStyle({ weight: 5, fillOpacity: 0.7, color: '#d32f2f', opacity: 1 });
+                    setTimeout(() => m.layer.setStyle(orig), 4000);
                 }
             }
         }
