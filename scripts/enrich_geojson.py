@@ -10,6 +10,7 @@ Idempotent: skips enrichments if source files are already deleted.
 
 import json
 import os
+import urllib.request
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'site', 'data')
 
@@ -146,9 +147,82 @@ def enrich_cites_minieres():
     print(f"  Total cites-minieres: {len(cites['features'])}")
 
 
+API_BASE = 'https://geo.api.gouv.fr'
+DEPARTMENTS = ['59', '62']
+
+
+def fetch_json(url):
+    """Fetch JSON from a URL."""
+    req = urllib.request.Request(url, headers={'User-Agent': 'bassin-minier-unesco/1.0'})
+    with urllib.request.urlopen(req) as response:
+        return json.loads(response.read().decode('utf-8'))
+
+
+def enrich_communes_epci():
+    """Enrich communes-mbm.geojson with EPCI code and name from geo.api.gouv.fr."""
+    print("Enrichment C: communes + EPCI")
+
+    communes = load_geojson('communes-mbm.geojson')
+    if communes is None:
+        print("  Skipped (communes-mbm.geojson not found)")
+        return
+
+    # Build INSEE -> EPCI code lookup from API
+    insee_to_epci_code = {}
+    epci_codes = set()
+    for dept in DEPARTMENTS:
+        url = f'{API_BASE}/communes?codeDepartement={dept}&fields=code,codeEpci'
+        print(f"  Fetching commune EPCI data for department {dept}...")
+        try:
+            data = fetch_json(url)
+        except Exception as e:
+            print(f"  ERROR fetching dept {dept}: {e}")
+            continue
+        for c in data:
+            code = c.get('code')
+            epci_code = c.get('codeEpci')
+            if code and epci_code:
+                insee_to_epci_code[code] = epci_code
+                epci_codes.add(epci_code)
+
+    # Fetch EPCI names
+    epci_names = {}
+    for epci_code in epci_codes:
+        url = f'{API_BASE}/epcis/{epci_code}?fields=nom'
+        try:
+            data = fetch_json(url)
+            epci_names[epci_code] = data.get('nom', '')
+        except Exception:
+            pass
+
+    print(f"  INSEE->EPCI entries: {len(insee_to_epci_code)}")
+    print(f"  EPCI names resolved: {len(epci_names)}")
+
+    # Build final lookup
+    insee_to_epci = {}
+    for code, epci_code in insee_to_epci_code.items():
+        insee_to_epci[code] = {'siren': epci_code, 'nom': epci_names.get(epci_code)}
+
+    # Enrich commune features
+    enriched = 0
+    for feat in communes['features']:
+        p = feat['properties']
+        insee = p.get('insee')
+        if insee and insee in insee_to_epci:
+            epci = insee_to_epci[insee]
+            p['epci_siren'] = epci['siren']
+            p['epci_nom'] = epci['nom']
+            enriched += 1
+
+    save_geojson('communes-mbm.geojson', communes)
+    print(f"  Communes enriched with EPCI: {enriched}/{len(communes['features'])}")
+
+
 if __name__ == '__main__':
     print("=== GeoJSON Enrichment & Deduplication ===\n")
     enrich_batis()
     print()
     enrich_cites_minieres()
+    print()
+    enrich_communes_epci()
     print("\nDone.")

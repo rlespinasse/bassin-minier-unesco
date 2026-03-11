@@ -54,6 +54,11 @@
         return links.length ? rawHtml(links.join(', ')) : null;
     }
 
+    function epciLink(name) {
+        if (!name || name === 'None') return '';
+        return `<a href="#" class="cross-link" data-link-type="epci" data-link-value="${escapeHtml(name)}">${escapeHtml(name)}<span class="cross-link-icon"> \u21AA</span></a>`;
+    }
+
     function terrilLinks(vueStr) {
         if (!vueStr || vueStr === 'None') return null;
         var ids = vueStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
@@ -212,6 +217,14 @@
             fillColor: '#B0BEC5',
             fillOpacity: 0.05,
             opacity: 0.6
+        },
+        'epci': {
+            color: '#7E57C2',
+            weight: 2,
+            dashArray: '8 6',
+            fillColor: '#7E57C2',
+            fillOpacity: 0.03,
+            opacity: 0.7
         },
         'zt-cavaliers': {
             color: '#66BB6A',
@@ -397,6 +410,7 @@
         'terrils': p => p.nom || `Terril ${p.no_terril || ''}`,
         'puits-de-mines': p => p.fosse ? `Fosse ${p.fosse}` : 'Puits',
         'communes-mbm': p => p.nom,
+        'epci': p => p.nom,
         'zt-cavaliers': p => p.nom || 'Cavalier (ZT)',
         'zt-cites-minieres': p => p.nom,
         'zt-espaces-neonaturels': p => p.nom,
@@ -527,6 +541,33 @@
                 const orig = styles['communes-mbm'];
                 layer.setStyle({ weight: 4, fillOpacity: 0.5, color: '#e57373' });
                 setTimeout(() => layer.setStyle(orig), 2500);
+            }
+        } else if (type === 'epci') {
+            const epciDef = allLayerDefs.find(d => d.id === 'epci');
+            if (!epciDef || !epciDef._leafletLayer) return;
+            let found = null;
+            epciDef._leafletLayer.eachLayer(lyr => {
+                if (found) return;
+                const p = lyr.feature.properties;
+                if (p.nom && normalizeText(p.nom) === normalizeText(value)) {
+                    found = lyr;
+                }
+            });
+            if (!found) return;
+            ensureLayerVisible('epci');
+            if (found.getBounds) {
+                map.fitBounds(found.getBounds(), { padding: [50, 50], maxZoom: 13 });
+            }
+            const epciBuilder = detailBuilders['epci'];
+            if (epciBuilder) {
+                selectedFeatureInfo = { layerId: 'epci', featureIndex: findFeatureIndex('epci', found) };
+                showDetail(epciBuilder(found.feature.properties));
+                updateHash();
+            }
+            if (found.setStyle) {
+                const orig = styles['epci'];
+                found.setStyle({ weight: 4, fillOpacity: 0.2, color: '#7E57C2' });
+                setTimeout(() => found.setStyle(orig), 2500);
             }
         } else if (type === 'terril') {
             // Search in terrils and zt-terrils layers
@@ -886,7 +927,8 @@
                 {
                     label: 'Identification', rows: [
                         p.insee && ['INSEE', p.insee],
-                        p.statut && ['Statut', p.statut]
+                        p.statut && ['Statut', p.statut],
+                        p.epci_nom && ['EPCI', rawHtml(epciLink(p.epci_nom))]
                     ]
                 },
                 {
@@ -900,6 +942,18 @@
             if (rl) groups.push(rl);
             groups.push({ label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] });
             return buildDetail(p.nom || 'Commune', 'communes-mbm', groups);
+        },
+        'epci': p => {
+            const groups = [
+                {
+                    label: 'Identification', rows: [
+                        p.code_siren && ['Code SIREN', p.code_siren]
+                    ]
+                }
+            ];
+            const rl = reverseLinks && p.nom ? buildReverseLinksSection(reverseLinks.epcis[normalizeText(p.nom)], 'Communes membres') : null;
+            if (rl) groups.push(rl);
+            return buildDetail(p.nom || 'EPCI', 'epci', groups);
         },
         'zt-cavaliers': p => {
             const cl = communeLinks(p, 'commune_1', 'commune_2', 'commune_3', 'commune_4');
@@ -1059,7 +1113,8 @@
 
     const contextLayers = [
         { id: 'bassin-minier', label: 'Bassin minier (ERBM)', file: 'data/bassin-minier.geojson', active: true },
-        { id: 'communes-mbm', label: 'Communes', file: 'data/communes-mbm.geojson', active: false }
+        { id: 'communes-mbm', label: 'Communes', file: 'data/communes-mbm.geojson', active: false },
+        { id: 'epci', label: 'Intercommunalites (EPCI)', file: 'data/epci.geojson', active: false }
     ];
 
     // Flatten for loading
@@ -1467,6 +1522,7 @@
         'terrils': { title: p => p.nom || `Terril ${p.no_terril || ''}`, meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Terril', text: ['nom', 'no_terril', 'commune_1', 'commune_2', 'compagnie', 'element', 'objet'] },
         'puits-de-mines': { title: p => p.fosse ? `Fosse ${p.fosse}${p.fosse_alias ? ` (${p.fosse_alias})` : ''}` : 'Puits', meta: p => p.commune || 'Puits de mine', text: ['fosse', 'fosse_alias', 'puits', 'commune', 'compagnie', 'concession', 'id'] },
         'communes-mbm': { title: p => p.nom, meta: p => 'Commune' + (p.population ? ` - pop. ${Number(p.population).toLocaleString('fr-FR')}` : ''), text: ['nom', 'insee'] },
+        'epci': { title: p => p.nom, meta: p => 'EPCI', text: ['nom', 'code_siren'] },
         'zt-cavaliers': { title: p => p.nom || 'Cavalier (ZT)', meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Cavalier (zone tampon)', text: ['nom', 'commune_1', 'commune_2', 'commune_3', 'commune_4', 'id_troncon'] },
         'zt-cites-minieres': { title: p => p.nom, meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Cite miniere (zone tampon)', text: ['nom', 'nom_2', 'commune_1', 'commune_2', 'compagnie'] },
         'zt-espaces-neonaturels': { title: p => p.nom, meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Espace neo-naturel (zone tampon)', text: ['nom', 'commune_1', 'commune_2'] },
@@ -1533,7 +1589,7 @@
                 previewLayerId = item.layerId;
                 if (previewLayer.setStyle) {
                     previewLayer.setStyle(getHoverStyle(item.layerId));
-                    if (previewLayer.bringToFront && item.layerId !== 'bassin-minier' && item.layerId !== 'communes-mbm') {
+                    if (previewLayer.bringToFront && item.layerId !== 'bassin-minier' && item.layerId !== 'communes-mbm' && item.layerId !== 'epci') {
                         previewLayer.bringToFront();
                     }
                 }
@@ -1836,6 +1892,7 @@
         'zone-tampon': 'largeFeaturesPane',
         'bien-inscrit': 'largeFeaturesPane',
         'communes-mbm': 'largeFeaturesPane',
+        'epci': 'largeFeaturesPane',
         'zt-cavaliers': 'largeFeaturesPane',
         'zt-cites-minieres': 'largeFeaturesPane',
         'zt-espaces-neonaturels': 'largeFeaturesPane',
@@ -2175,7 +2232,7 @@
                             if (layer.setStyle) {
                                 layer.setStyle(getHoverStyle(def.id));
                             }
-                            if (layer.bringToFront && def.id !== 'bassin-minier' && def.id !== 'communes-mbm') {
+                            if (layer.bringToFront && def.id !== 'bassin-minier' && def.id !== 'communes-mbm' && def.id !== 'epci') {
                                 layer.bringToFront();
                             }
                         });

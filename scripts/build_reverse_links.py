@@ -96,6 +96,7 @@ def build():
     communes = {}
     elements = {}
     terrils = {}
+    epcis = {}
 
     all_layer_ids = sorted(set(
         list(COMMUNE_PROPS.keys()) + ELEMENT_LAYERS + VUE_SUR_LAYERS
@@ -137,10 +138,24 @@ def build():
                     for tid in ids:
                         add_entry(terrils, tid, layer_id, item)
 
+    # EPCI reverse links: communes-mbm features with epci_nom
+    communes_geojson = load_geojson('communes-mbm.geojson')
+    if communes_geojson:
+        print(f"  Building EPCI reverse links from communes-mbm...")
+        for idx, feature in enumerate(communes_geojson.get('features', [])):
+            props = feature.get('properties', {})
+            epci_nom = props.get('epci_nom')
+            norm = normalize(epci_nom)
+            if norm:
+                label = props.get('nom', 'Commune')
+                add_entry(epcis, norm, 'communes-mbm', {'index': idx, 'label': label})
+        print(f"  EPCI entries: {len(epcis)}")
+
     result = {
         'communes': communes,
         'elements': elements,
         'terrils': terrils,
+        'epcis': epcis,
     }
 
     output_path = os.path.join(DATA_DIR, 'reverse-links.json')
@@ -152,6 +167,7 @@ def build():
     print(f"  Communes: {len(communes)} entries")
     print(f"  Elements: {len(elements)} entries")
     print(f"  Terrils: {len(terrils)} entries")
+    print(f"  EPCIs: {len(epcis)} entries")
 
 
 if __name__ == '__main__':

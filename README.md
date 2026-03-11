@@ -30,14 +30,19 @@ Source : [Bassin minier au sens de la Mission Bassin Minier](https://www.data.go
 - **ZT Terrils** : terrils en zone tampon
 - **ZT Parvis agricoles** : parvis agricoles en zone tampon
 
+### [geo.api.gouv.fr](https://geo.api.gouv.fr/) — API
+
+- **EPCI** : intercommunalites (Etablissements Publics de Cooperation Intercommunale) couvrant les communes du bassin minier, pour les departements 59 (Nord) et 62 (Pas-de-Calais)
+
 ### Enrichissements
 
 Les donnees WFS sont fusionnees dans les shapefiles pour consolider les jeux de donnees :
 
 - **Batis** : enrichi avec les equipements collectifs et les equipements d'extraction (nom, compagnie, periode, proprietaire, protection)
 - **Cites minieres** : enrichi avec les cites ERBM (id_lsm, nom_2, proprietaire, commune_3)
+- **Communes MBM** : enrichi avec le code SIREN et le nom de l'EPCI de rattachement (via geo.api.gouv.fr)
 
-Ce traitement est realise par le script `scripts/enrich_geojson.py` et reduit le nombre de fichiers de 18 a 15.
+Ce traitement est realise par le script `scripts/enrich_geojson.py` et reduit le nombre de fichiers de 18 a 16.
 
 ## Prerequis
 
@@ -53,7 +58,7 @@ just install
 
 ## Generation des donnees
 
-Telecharge les sources (shapefiles data.gouv.fr, couches WFS geo2france.fr), les convertit en GeoJSON, puis fusionne les jeux de donnees qui se recoupent :
+Telecharge les sources (shapefiles data.gouv.fr, couches WFS geo2france.fr, EPCI geo.api.gouv.fr), les convertit en GeoJSON, puis fusionne les jeux de donnees qui se recoupent :
 
 ```bash
 just convert
