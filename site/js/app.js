@@ -1,6 +1,19 @@
 (function () {
     'use strict';
 
+    // --- Analytics ---
+
+    function trackEvent(path, title) {
+        if (window.goatcounter && window.goatcounter.count) {
+            window.goatcounter.count({ path: path, title: title, event: true });
+        }
+    }
+    function trackPageView() {
+        if (window.goatcounter && window.goatcounter.count) {
+            window.goatcounter.count({ path: location.pathname + location.hash, title: document.title });
+        }
+    }
+
     // --- Helpers ---
 
     function joinNotNull(arr) {
@@ -447,6 +460,7 @@
 
     detailBack.addEventListener('click', () => {
         if (!detailBackStack.length) return;
+        trackEvent('event/panel/back', 'Detail panel back');
         // Save current to forward stack
         detailForwardStack.push({
             html: detailContent.innerHTML,
@@ -461,6 +475,7 @@
 
     detailForward.addEventListener('click', () => {
         if (!detailForwardStack.length) return;
+        trackEvent('event/panel/forward', 'Detail panel forward');
         // Save current to back stack
         detailBackStack.push({
             html: detailContent.innerHTML,
@@ -474,12 +489,16 @@
     });
 
     detailClearHistory.addEventListener('click', () => {
+        trackEvent('event/panel/clear-history', 'Detail panel clear history');
         detailBackStack.length = 0;
         detailForwardStack.length = 0;
         updateNavButtons();
     });
 
-    detailClose.addEventListener('click', hideDetail);
+    detailClose.addEventListener('click', () => {
+        trackEvent('event/panel/close', 'Detail panel close');
+        hideDetail();
+    });
 
     // Cross-link click handler (event delegation)
     detailContent.addEventListener('click', e => {
@@ -1219,6 +1238,7 @@
                 cardLabel.textContent = name;
                 baseCards.push(card);
                 card.addEventListener('click', () => {
+                    trackEvent('event/basemap', 'Base map change');
                     for (const n of Object.keys(self._baseLayers)) {
                         self._map.removeLayer(self._baseLayers[n]);
                     }
@@ -1350,6 +1370,7 @@
                 e.preventDefault();
                 e.stopPropagation();
                 const nowActive = toggleBtn.classList.contains('active');
+                trackEvent('event/layer-toggle', 'Layer toggle');
                 setToggleState(toggleBtn, !nowActive, 'la couche');
                 if (nowActive) {
                     if (def._leafletLayer) self._map.removeLayer(def._leafletLayer);
@@ -1596,6 +1617,7 @@
             }
 
             function selectResult(item) {
+                trackEvent('event/search', 'Search');
                 clearResults();
                 input.value = item.title;
                 updateClearBtn();
@@ -1695,7 +1717,10 @@
             layersBtn.title = 'Couches';
             layersBtn.setAttribute('aria-label', 'Couches');
             layersBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
-            layersBtn.addEventListener('click', () => layersDrawer.toggle());
+            layersBtn.addEventListener('click', () => {
+                trackEvent('event/drawer', 'Layers drawer');
+                layersDrawer.toggle();
+            });
             layersDrawer._toggleBtn = layersBtn;
 
             // Search control
@@ -1736,10 +1761,12 @@
 
             L.DomEvent.on(zoomIn, 'click', e => {
                 L.DomEvent.preventDefault(e);
+                trackEvent('event/zoom/in', 'Zoom in');
                 map.zoomIn();
             });
             L.DomEvent.on(fullExtent, 'click', e => {
                 L.DomEvent.preventDefault(e);
+                trackEvent('event/view/full-extent', 'Full extent');
                 hideDetail();
                 if (boundsGroup.getBounds().isValid()) {
                     map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
@@ -1749,10 +1776,12 @@
             });
             L.DomEvent.on(resetView, 'click', e => {
                 L.DomEvent.preventDefault(e);
+                trackEvent('event/view/reset', 'Reset view');
                 resetToDefaults();
             });
             L.DomEvent.on(zoomOut, 'click', e => {
                 L.DomEvent.preventDefault(e);
+                trackEvent('event/zoom/out', 'Zoom out');
                 map.zoomOut();
             });
 
@@ -1899,6 +1928,7 @@
 
         const hash = params.toString();
         history.replaceState(null, '', '#' + hash);
+        trackPageView();
     }
 
     function parseHash() {
@@ -2115,6 +2145,7 @@
                                 L.DomEvent.stopPropagation(e);
                                 // Track selected feature for URL sharing
                                 const idx = geojson.features.indexOf(feature);
+                                trackEvent('event/feature', 'Feature click');
                                 selectedFeatureInfo = { layerId: def.id, featureIndex: idx };
                                 showDetail(builder(feature.properties));
                                 updateHash();
