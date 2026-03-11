@@ -13,7 +13,7 @@
     }
     function trackPageView() {
         if (!isLocalhost() && window.goatcounter && window.goatcounter.count) {
-            window.goatcounter.count({ path: location.pathname + location.hash, title: document.title });
+            window.goatcounter.count({ path: location.pathname, title: document.title });
         }
     }
 
@@ -1988,7 +1988,6 @@
 
         const hash = params.toString();
         history.replaceState(null, '', '#' + hash);
-        trackPageView();
     }
 
     function parseHash() {
@@ -2166,6 +2165,9 @@
                 map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
             }
         }
+
+        // Track a single page view on load
+        trackPageView();
 
         // Start updating hash on map move (after initial state is applied)
         map.on('moveend', updateHash);
