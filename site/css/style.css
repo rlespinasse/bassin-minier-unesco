@@ -648,6 +648,25 @@ main {
 /* --- Mobile --- */
 
 @media (max-width: 600px) {
+    /* Attribution: full-width strip at the very bottom */
+    .leaflet-bottom.leaflet-right {
+        left: 0;
+        width: 100%;
+    }
+
+    .leaflet-control-attribution {
+        width: 100%;
+        font-size: 0.6rem;
+        text-align: center;
+        border-radius: 0;
+        margin: 0 !important;
+    }
+
+    /* Lift the bottom bar above the attribution strip */
+    .leaflet-bottom.leaflet-left {
+        margin-bottom: 20px;
+    }
+
     .title-overlay {
         max-width: 220px;
         padding: 0.4rem 0.7rem;

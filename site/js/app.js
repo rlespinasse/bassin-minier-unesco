@@ -82,10 +82,6 @@
     });
     new TitleControl().addTo(map);
 
-    // Data source attribution
-    map.attributionControl.addAttribution(
-        'Données <a href="https://www.missionbassinminier.org">Mission Bassin Minier</a> — <a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/">Licence ETALAB v2.0</a>'
-    );
 
     // --- Layer styles ---
 
