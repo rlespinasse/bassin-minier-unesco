@@ -151,11 +151,63 @@ def build():
                 add_entry(epcis, norm, 'communes-mbm', {'index': idx, 'label': label})
         print(f"  EPCI entries: {len(epcis)}")
 
+    # Département reverse links: communes and EPCIs per département
+    departements = {}
+    dept_geojson = load_geojson('departements.geojson')
+    if dept_geojson and communes_geojson:
+        # Build code -> nom mapping from departements.geojson
+        dept_map = {}
+        for feat in dept_geojson.get('features', []):
+            p = feat.get('properties', {})
+            dept_map[p.get('code')] = p.get('nom')
+
+        print(f"  Building département reverse links...")
+
+        # Link communes to départements via INSEE code prefix
+        for idx, feature in enumerate(communes_geojson.get('features', [])):
+            props = feature.get('properties', {})
+            insee = props.get('insee', '')
+            dept_code = insee[:2] if len(insee) >= 2 else None
+            if dept_code and dept_code in dept_map:
+                dept_nom = dept_map[dept_code]
+                norm = normalize(dept_nom)
+                if norm:
+                    label = props.get('nom', 'Commune')
+                    add_entry(departements, norm, 'communes-mbm', {'index': idx, 'label': label})
+
+        # Link EPCIs to départements via their member communes
+        epci_geojson = load_geojson('epci.geojson')
+        if epci_geojson:
+            # Determine which départements each EPCI covers based on its member communes
+            epci_depts = {}
+            for feature in communes_geojson.get('features', []):
+                props = feature.get('properties', {})
+                epci_nom = props.get('epci_nom')
+                insee = props.get('insee', '')
+                dept_code = insee[:2] if len(insee) >= 2 else None
+                if epci_nom and dept_code and dept_code in dept_map:
+                    if epci_nom not in epci_depts:
+                        epci_depts[epci_nom] = set()
+                    epci_depts[epci_nom].add(dept_code)
+
+            for idx, feature in enumerate(epci_geojson.get('features', [])):
+                props = feature.get('properties', {})
+                epci_nom = props.get('nom', '')
+                label = epci_nom or 'EPCI'
+                for dept_code in epci_depts.get(epci_nom, set()):
+                    dept_nom = dept_map[dept_code]
+                    norm = normalize(dept_nom)
+                    if norm:
+                        add_entry(departements, norm, 'epci', {'index': idx, 'label': label})
+
+        print(f"  Département entries: {len(departements)}")
+
     result = {
         'communes': communes,
         'elements': elements,
         'terrils': terrils,
         'epcis': epcis,
+        'departements': departements,
     }
 
     output_path = os.path.join(DATA_DIR, 'reverse-links.json')
@@ -168,6 +220,7 @@ def build():
     print(f"  Elements: {len(elements)} entries")
     print(f"  Terrils: {len(terrils)} entries")
     print(f"  EPCIs: {len(epcis)} entries")
+    print(f"  Départements: {len(departements)} entries")
 
 
 if __name__ == '__main__':

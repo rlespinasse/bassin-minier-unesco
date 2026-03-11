@@ -33,6 +33,7 @@ Source : [Bassin minier au sens de la Mission Bassin Minier](https://www.data.go
 ### [geo.api.gouv.fr](https://geo.api.gouv.fr/) — API
 
 - **EPCI** : intercommunalites (Etablissements Publics de Cooperation Intercommunale) couvrant les communes du bassin minier, pour les departements 59 (Nord) et 62 (Pas-de-Calais)
+- **Departements** : contours des departements 59 (Nord) et 62 (Pas-de-Calais), obtenus par dissolution des contours communaux via l'API
 
 ### Enrichissements
 
@@ -58,7 +59,7 @@ just install
 
 ## Generation des donnees
 
-Telecharge les sources (shapefiles data.gouv.fr, couches WFS geo2france.fr, EPCI geo.api.gouv.fr), les convertit en GeoJSON, puis fusionne les jeux de donnees qui se recoupent :
+Telecharge les sources (shapefiles data.gouv.fr, couches WFS geo2france.fr, EPCI et departements geo.api.gouv.fr), les convertit en GeoJSON, puis fusionne les jeux de donnees qui se recoupent :
 
 ```bash
 just convert

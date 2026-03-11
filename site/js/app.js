@@ -62,6 +62,25 @@
         return `<a href="#" class="cross-link" data-link-type="epci" data-link-value="${escapeHtml(name)}">${escapeHtml(name)}<span class="cross-link-icon"> \u21AA</span></a>`;
     }
 
+    function deptLink(name) {
+        if (!name || name === 'None') return '';
+        return `<a href="#" class="cross-link" data-link-type="departement" data-link-value="${escapeHtml(name)}">${escapeHtml(name)}<span class="cross-link-icon"> \u21AA</span></a>`;
+    }
+
+    function deptNameFromInsee(insee) {
+        if (!insee || insee.length < 2) return null;
+        const prefix = insee.substring(0, 2);
+        const def = allLayerDefs.find(d => d.id === 'departements');
+        if (!def || !def._leafletLayer) return null;
+        let name = null;
+        def._leafletLayer.eachLayer(lyr => {
+            if (!name && lyr.feature.properties.code === prefix) {
+                name = lyr.feature.properties.nom;
+            }
+        });
+        return name;
+    }
+
     function terrilLinks(vueStr) {
         if (!vueStr || vueStr === 'None') return null;
         var ids = vueStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
@@ -227,6 +246,14 @@
             dashArray: '8 6',
             fillColor: '#7E57C2',
             fillOpacity: 0.03,
+            opacity: 0.7
+        },
+        'departements': {
+            color: '#FF8F00',
+            weight: 2,
+            dashArray: '10 5',
+            fillColor: '#FF8F00',
+            fillOpacity: 0.02,
             opacity: 0.7
         },
         'zt-cavaliers': {
@@ -414,6 +441,7 @@
         'puits-de-mines': p => p.fosse ? `Fosse ${p.fosse}` : 'Puits',
         'communes-mbm': p => p.nom,
         'epci': p => p.nom,
+        'departements': p => p.nom,
         'zt-cavaliers': p => p.nom || 'Cavalier (ZT)',
         'zt-cites-minieres': p => p.nom,
         'zt-espaces-neonaturels': p => p.nom,
@@ -572,6 +600,33 @@
                 found.setStyle({ weight: 4, fillOpacity: 0.2, color: '#7E57C2' });
                 setTimeout(() => found.setStyle(orig), 2500);
             }
+        } else if (type === 'departement') {
+            const deptDef = allLayerDefs.find(d => d.id === 'departements');
+            if (!deptDef || !deptDef._leafletLayer) return;
+            let found = null;
+            deptDef._leafletLayer.eachLayer(lyr => {
+                if (found) return;
+                const p = lyr.feature.properties;
+                if (p.nom && normalizeText(p.nom) === normalizeText(value)) {
+                    found = lyr;
+                }
+            });
+            if (!found) return;
+            ensureLayerVisible('departements');
+            if (found.getBounds) {
+                map.fitBounds(found.getBounds(), { padding: [50, 50], maxZoom: 11 });
+            }
+            const deptBuilder = detailBuilders['departements'];
+            if (deptBuilder) {
+                selectedFeatureInfo = { layerId: 'departements', featureIndex: findFeatureIndex('departements', found) };
+                showDetail(deptBuilder(found.feature.properties));
+                updateHash();
+            }
+            if (found.setStyle) {
+                const orig = styles['departements'];
+                found.setStyle({ weight: 4, fillOpacity: 0.1, color: '#FF8F00' });
+                setTimeout(() => found.setStyle(orig), 2500);
+            }
         } else if (type === 'terril') {
             // Search in terrils and zt-terrils layers
             let found = null;
@@ -720,6 +775,10 @@
         mbm: {
             name: 'Bassin minier au sens de la Mission Bassin Minier',
             url: 'https://www.data.gouv.fr/datasets/bassin-minier-au-sens-de-la-mission-bassin-minier'
+        },
+        geoApi: {
+            name: 'API Découpage Administratif (API Geo)',
+            url: 'https://geo.api.gouv.fr'
         }
     };
 
@@ -931,7 +990,8 @@
                     label: 'Identification', rows: [
                         p.insee && ['INSEE', p.insee],
                         p.statut && ['Statut', p.statut],
-                        p.epci_nom && ['EPCI', rawHtml(epciLink(p.epci_nom))]
+                        p.epci_nom && ['EPCI', rawHtml(epciLink(p.epci_nom))],
+                        p.insee && deptNameFromInsee(p.insee) && ['Département', rawHtml(deptLink(deptNameFromInsee(p.insee)))]
                     ]
                 },
                 {
@@ -947,16 +1007,51 @@
             return buildDetail(p.nom || 'Commune', 'communes-mbm', groups);
         },
         'epci': p => {
+            // Find départements for this EPCI from its member communes
+            const deptSet = new Set();
+            if (reverseLinks && reverseLinks.epcis) {
+                const members = reverseLinks.epcis[normalizeText(p.nom)];
+                if (members && members['communes-mbm']) {
+                    const communesDef = allLayerDefs.find(d => d.id === 'communes-mbm');
+                    if (communesDef && communesDef._leafletLayer) {
+                        const communeLayers = [];
+                        communesDef._leafletLayer.eachLayer(lyr => communeLayers.push(lyr));
+                        for (const item of members['communes-mbm']) {
+                            const lyr = communeLayers[item.index];
+                            if (lyr) {
+                                const name = deptNameFromInsee(lyr.feature.properties.insee);
+                                if (name) deptSet.add(name);
+                            }
+                        }
+                    }
+                }
+            }
+            const deptNames = [...deptSet].sort();
             const groups = [
                 {
                     label: 'Identification', rows: [
-                        p.code_siren && ['Code SIREN', p.code_siren]
+                        p.code_siren && ['Code SIREN', p.code_siren],
+                        deptNames.length && ['Département(s)', rawHtml(deptNames.map(n => deptLink(n)).join(', '))]
                     ]
                 }
             ];
             const rl = reverseLinks && p.nom ? buildReverseLinksSection(reverseLinks.epcis[normalizeText(p.nom)], 'Communes membres') : null;
             if (rl) groups.push(rl);
+            groups.push({ label: 'Liens', rows: [sourceRow(dataGouvSources.geoApi)] });
             return buildDetail(p.nom || 'EPCI', 'epci', groups);
+        },
+        'departements': p => {
+            const groups = [
+                {
+                    label: 'Identification', rows: [
+                        p.code && ['Code', p.code]
+                    ]
+                }
+            ];
+            const rlEpci = reverseLinks && p.nom ? buildReverseLinksSection(reverseLinks.departements[normalizeText(p.nom)], 'Contenu') : null;
+            if (rlEpci) groups.push(rlEpci);
+            groups.push({ label: 'Liens', rows: [sourceRow(dataGouvSources.geoApi)] });
+            return buildDetail(p.nom || 'Département', 'departements', groups);
         },
         'zt-cavaliers': p => {
             const cl = communeLinks(p, 'commune_1', 'commune_2', 'commune_3', 'commune_4');
@@ -1117,7 +1212,8 @@
     const contextLayers = [
         { id: 'bassin-minier', label: 'Bassin minier (ERBM)', file: 'data/bassin-minier.geojson', active: true },
         { id: 'communes-mbm', label: 'Communes', file: 'data/communes-mbm.geojson', active: false },
-        { id: 'epci', label: 'Intercommunalites (EPCI)', file: 'data/epci.geojson', active: false }
+        { id: 'epci', label: 'Intercommunalites (EPCI)', file: 'data/epci.geojson', active: false },
+        { id: 'departements', label: 'Départements', file: 'data/departements.geojson', active: false }
     ];
 
     // Flatten for loading
@@ -1526,6 +1622,7 @@
         'puits-de-mines': { title: p => p.fosse ? `Fosse ${p.fosse}${p.fosse_alias ? ` (${p.fosse_alias})` : ''}` : 'Puits', meta: p => p.commune || 'Puits de mine', text: ['fosse', 'fosse_alias', 'puits', 'commune', 'compagnie', 'concession', 'id'] },
         'communes-mbm': { title: p => p.nom, meta: p => 'Commune' + (p.population ? ` - pop. ${Number(p.population).toLocaleString('fr-FR')}` : ''), text: ['nom', 'insee'] },
         'epci': { title: p => p.nom, meta: p => 'EPCI', text: ['nom', 'code_siren'] },
+        'departements': { title: p => p.nom, meta: p => 'Département', text: ['nom', 'code'] },
         'zt-cavaliers': { title: p => p.nom || 'Cavalier (ZT)', meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Cavalier (zone tampon)', text: ['nom', 'commune_1', 'commune_2', 'commune_3', 'commune_4', 'id_troncon'] },
         'zt-cites-minieres': { title: p => p.nom, meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Cite miniere (zone tampon)', text: ['nom', 'nom_2', 'commune_1', 'commune_2', 'compagnie'] },
         'zt-espaces-neonaturels': { title: p => p.nom, meta: p => joinNotNull([p.commune_1, p.commune_2]) || 'Espace neo-naturel (zone tampon)', text: ['nom', 'commune_1', 'commune_2'] },
@@ -1592,7 +1689,7 @@
                 previewLayerId = item.layerId;
                 if (previewLayer.setStyle) {
                     previewLayer.setStyle(getHoverStyle(item.layerId));
-                    if (previewLayer.bringToFront && item.layerId !== 'bassin-minier' && item.layerId !== 'communes-mbm' && item.layerId !== 'epci') {
+                    if (previewLayer.bringToFront && item.layerId !== 'bassin-minier' && item.layerId !== 'communes-mbm' && item.layerId !== 'epci' && item.layerId !== 'departements') {
                         previewLayer.bringToFront();
                     }
                 }
@@ -1896,6 +1993,7 @@
         'bien-inscrit': 'largeFeaturesPane',
         'communes-mbm': 'largeFeaturesPane',
         'epci': 'largeFeaturesPane',
+        'departements': 'largeFeaturesPane',
         'zt-cavaliers': 'largeFeaturesPane',
         'zt-cites-minieres': 'largeFeaturesPane',
         'zt-espaces-neonaturels': 'largeFeaturesPane',
@@ -2237,7 +2335,7 @@
                             if (layer.setStyle) {
                                 layer.setStyle(getHoverStyle(def.id));
                             }
-                            if (layer.bringToFront && def.id !== 'bassin-minier' && def.id !== 'communes-mbm' && def.id !== 'epci') {
+                            if (layer.bringToFront && def.id !== 'bassin-minier' && def.id !== 'communes-mbm' && def.id !== 'epci' && def.id !== 'departements') {
                                 layer.bringToFront();
                             }
                         });

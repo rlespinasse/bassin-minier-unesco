@@ -20,7 +20,7 @@ install:
 
 # Download and convert all data sources to GeoJSON
 [group('data')]
-convert: convert-wfs convert-shapefiles download-epci enrich reverse-links
+convert: convert-wfs convert-shapefiles download-epci download-departements enrich reverse-links
 
 # Download from WFS endpoints and convert to GeoJSON
 [group('data')]
@@ -36,6 +36,11 @@ convert-shapefiles:
 [group('data')]
 download-epci:
     {{ python }} scripts/download_epci.py
+
+# Download department boundaries from geo.api.gouv.fr
+[group('data')]
+download-departements:
+    {{ python }} scripts/download_departements.py
 
 # Enrich and deduplicate GeoJSON files (merge overlapping datasets)
 [group('data')]
@@ -71,7 +76,7 @@ dev: convert serve
 
 # --- Quality ---
 
-# Check that all 16 GeoJSON files exist in site/data/
+# Check that all 17 GeoJSON files exist in site/data/
 [group('quality')]
 check:
     #!/usr/bin/env bash
@@ -88,6 +93,7 @@ check:
         puits-de-mines.geojson
         communes-mbm.geojson
         epci.geojson
+        departements.geojson
         zt-cavaliers.geojson
         zt-cites-minieres.geojson
         zt-espaces-neonaturels.geojson
