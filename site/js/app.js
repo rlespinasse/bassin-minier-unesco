@@ -788,7 +788,9 @@
 
     function buildDetail(title, layerId, groups) {
         const color = styles[layerId] ? (styles[layerId].fillColor || styles[layerId].color) : '#888';
-        let html = `<h3><span class="detail-layer-badge" style="background:${color}"></span>${escapeHtml(title)}</h3>`;
+        const def = allLayerDefs.find(d => d.id === layerId);
+        const layerLabel = def ? def.label : layerId;
+        let html = `<div class="detail-header"><span class="detail-layer-type"><span class="detail-layer-badge" style="background:${color}"></span>${escapeHtml(layerLabel)}</span></div><h3>${escapeHtml(title)}</h3>`;
         for (const group of groups) {
             const rows = group.rows.filter(Boolean);
             if (rows.length === 0) continue;

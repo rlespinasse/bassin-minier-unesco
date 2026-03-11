@@ -214,10 +214,27 @@ main {
     min-width: 340px;
 }
 
+#detail-content .detail-header {
+    display: flex;
+    align-items: center;
+    min-height: 1.75rem;
+    padding-right: 8rem;
+}
+
+#detail-content .detail-layer-type {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+}
+
 #detail-content h3 {
     font-size: 1.05rem;
     margin: 0 0 0.75rem 0;
-    padding-right: 1.5rem;
     color: var(--color-brand);
 }
 
