@@ -706,11 +706,12 @@ main {
         text-align: center;
         border-radius: 0;
         margin: 0 !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
-    /* Lift the bottom bar above the attribution strip */
+    /* Lift the bottom bar above the attribution strip + safe area */
     .leaflet-bottom.leaflet-left {
-        margin-bottom: 20px;
+        margin-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     }
 
     .title-overlay {
