@@ -686,7 +686,7 @@
             const def = allLayerDefs.find(d => d.id === layerId);
             const layerLabel = def ? def.label : layerId;
             const links = items.map(item => featureLink(layerId, item.index, item.label));
-            rows.push([layerLabel, rawHtml(links.join(', '))]);
+            rows.push([layerLabel, rawHtml(links.join('<br>'))]);
         }
         return rows.length ? { label: sectionLabel, rows } : null;
     }

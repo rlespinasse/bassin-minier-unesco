@@ -258,8 +258,9 @@ main {
 
 #detail-content table td:first-child {
     font-weight: 600;
-    white-space: nowrap;
     color: var(--color-text-secondary);
+    min-width: 5rem;
+    max-width: 8rem;
 }
 
 #detail-content table a {
