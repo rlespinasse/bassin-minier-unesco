@@ -245,6 +245,27 @@ main {
     text-decoration: underline;
 }
 
+/* --- Cross-links in detail panel --- */
+
+#detail-content .cross-link {
+    color: var(--color-brand);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--color-brand);
+    cursor: pointer;
+    transition: border-bottom-style 0.15s;
+}
+
+#detail-content .cross-link:hover {
+    border-bottom-style: solid;
+    text-decoration: none;
+}
+
+#detail-content .cross-link-icon {
+    font-size: 0.7em;
+    margin-left: 1px;
+    vertical-align: super;
+}
+
 /* --- Layers drawer --- */
 
 .layers-drawer {

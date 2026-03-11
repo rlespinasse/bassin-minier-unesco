@@ -21,6 +21,37 @@
         return escapeHtml(val);
     }
 
+    // --- Cross-link helpers ---
+
+    function communeLink(name) {
+        if (!name || name === 'None') return '';
+        return `<a href="#" class="cross-link" data-link-type="commune" data-link-value="${escapeHtml(name)}">${escapeHtml(name)}<span class="cross-link-icon"> \u21AA</span></a>`;
+    }
+
+    function communeLinks(props) {
+        var keys = Array.prototype.slice.call(arguments, 1);
+        var links = keys
+            .map(function (k) { return props[k]; })
+            .filter(function (v) { return v && v !== 'None'; })
+            .map(communeLink);
+        return links.length ? rawHtml(links.join(', ')) : null;
+    }
+
+    function terrilLinks(vueStr) {
+        if (!vueStr || vueStr === 'None') return null;
+        var ids = vueStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+        if (!ids.length) return null;
+        var links = ids.map(function (id) {
+            return `<a href="#" class="cross-link" data-link-type="terril" data-link-value="${escapeHtml(id)}">${escapeHtml(id)}<span class="cross-link-icon"> \u21AA</span></a>`;
+        });
+        return rawHtml(links.join(', '));
+    }
+
+    function elementLink(elementId) {
+        if (!elementId || elementId === 'None') return null;
+        return rawHtml(`<a href="#" class="cross-link" data-link-type="element" data-link-value="${escapeHtml(elementId)}">${escapeHtml(elementId)}<span class="cross-link-icon"> \u21AA</span></a>`);
+    }
+
     /**
      * Set a toggle button's visual state.
      * @param {HTMLElement} btn - The button element
@@ -375,6 +406,99 @@
 
     detailClose.addEventListener('click', hideDetail);
 
+    // Cross-link click handler (event delegation)
+    detailContent.addEventListener('click', e => {
+        const link = e.target.closest('.cross-link');
+        if (!link) return;
+        e.preventDefault();
+        const type = link.dataset.linkType;
+        const value = link.dataset.linkValue;
+
+        if (type === 'commune') {
+            const layer = communeIndex.get(value.toLowerCase());
+            if (!layer) return;
+            ensureLayerVisible('communes-mbm');
+            if (layer.getBounds) {
+                map.fitBounds(layer.getBounds(), { padding: [50, 50], maxZoom: 15 });
+            }
+            // Open detail panel
+            const builder = detailBuilders['communes-mbm'];
+            if (builder) showDetail(builder(layer.feature.properties));
+            // Brief highlight
+            if (layer.setStyle) {
+                const orig = styles['communes-mbm'];
+                layer.setStyle({ weight: 4, fillOpacity: 0.5, color: '#e57373' });
+                setTimeout(() => layer.setStyle(orig), 2500);
+            }
+        } else if (type === 'terril') {
+            // Search in terrils and zt-terrils layers
+            let found = null;
+            let foundLayerId = null;
+            for (const lid of ['terrils', 'zt-terrils']) {
+                const def = allLayerDefs.find(d => d.id === lid);
+                if (!def || !def._leafletLayer) continue;
+                def._leafletLayer.eachLayer(lyr => {
+                    if (found) return;
+                    const p = lyr.feature.properties;
+                    if (String(p.no_terril) === value || String(p.id) === value) {
+                        found = lyr;
+                        foundLayerId = lid;
+                    }
+                });
+                if (found) break;
+            }
+            if (!found) return;
+            ensureLayerVisible(foundLayerId);
+            if (found.getBounds) {
+                map.fitBounds(found.getBounds(), { padding: [50, 50], maxZoom: 16 });
+            } else if (found.getLatLng) {
+                map.setView(found.getLatLng(), 16);
+            }
+            // Open detail
+            const builder = detailBuilders[foundLayerId];
+            if (builder) showDetail(builder(found.feature.properties));
+        } else if (type === 'element') {
+            // Find all features sharing this element across UNESCO layers
+            const elementLayers = ['batis', 'cites-minieres', 'cavaliers', 'espace-neonaturel', 'terrils'];
+            const matches = [];
+            for (const lid of elementLayers) {
+                const def = allLayerDefs.find(d => d.id === lid);
+                if (!def || !def._leafletLayer) continue;
+                def._leafletLayer.eachLayer(lyr => {
+                    if (String(lyr.feature.properties.element) === value) {
+                        matches.push({ layer: lyr, layerId: lid });
+                    }
+                });
+            }
+            if (!matches.length) return;
+            // Enable all needed layers and compute bounds
+            const bounds = L.latLngBounds();
+            for (const m of matches) {
+                ensureLayerVisible(m.layerId);
+                if (m.layer.getBounds) {
+                    bounds.extend(m.layer.getBounds());
+                } else if (m.layer.getLatLng) {
+                    bounds.extend(m.layer.getLatLng());
+                }
+            }
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+            }
+            // Open detail panel for the first match
+            const first = matches[0];
+            const elBuilder = detailBuilders[first.layerId];
+            if (elBuilder) showDetail(elBuilder(first.layer.feature.properties));
+            // Brief highlight all matches
+            for (const m of matches) {
+                if (m.layer.setStyle) {
+                    const orig = styles[m.layerId];
+                    m.layer.setStyle({ weight: 4, fillOpacity: 0.6, color: '#e57373' });
+                    setTimeout(() => m.layer.setStyle(orig), 3000);
+                }
+            }
+        }
+    });
+
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             if (layersDrawer && layersDrawer.isOpen()) {
@@ -419,7 +543,7 @@
     };
 
     function sourceRow(source) {
-        return ['Sources', rawHtml(`<a href="${source.url}" target="_blank" rel="noopener">${source.name}</a>`)];
+        return ['Sources', rawHtml(`<a href="${source.url}" target="_blank" rel="noopener">${source.name}<span class="cross-link-icon"> \u2197</span></a>`)];
     }
 
     function buildDetail(title, layerId, groups) {
@@ -480,10 +604,11 @@
         'cites-minieres': p => {
             let nom = p.nom || 'Cite miniere';
             if (p.nom_2) nom += ` / ${p.nom_2}`;
+            const cl = communeLinks(p, 'commune_1', 'commune_2', 'commune_3');
             return buildDetail(nom, 'cites-minieres', [
                 {
                     label: 'Localisation', rows: [
-                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
+                        cl && ['Commune', cl]
                     ]
                 },
                 {
@@ -493,7 +618,7 @@
                         p.interet && ['Interet', p.interet],
                         p.proprietaire && ['Proprietaire', p.proprietaire],
                         p.id_unesco && ['ID UNESCO', p.id_unesco],
-                        p.element && ['Element', p.element],
+                        p.element && ['Element', elementLink(p.element)],
                         p.objet && ['Objet', p.objet],
                         p.id_lsm && ['ID LSM', p.id_lsm]
                     ]
@@ -510,7 +635,7 @@
         'batis': p => buildDetail(p.denomination || p.nom || 'Bati minier', 'batis', [
             {
                 label: 'Localisation', rows: [
-                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
+                    p.commune_1 && ['Commune', communeLinks(p, 'commune_1', 'commune_2')]
                 ]
             },
             {
@@ -520,7 +645,7 @@
                     p.periode && ['Periode', p.periode],
                     p.proprietaire && ['Proprietaire', p.proprietaire],
                     p.id_unesco && ['ID UNESCO', p.id_unesco],
-                    p.element && ['Element', p.element],
+                    p.element && ['Element', elementLink(p.element)],
                     p.objet && ['Objet', p.objet]
                 ]
             },
@@ -537,14 +662,11 @@
             }
         ]),
         'cavaliers': p => {
-            const communes = joinNotNull([
-                p.commune_1, p.commune_2, p.commune_3,
-                p.commune_4, p.commune_5, p.commune_6
-            ]);
+            const cl = communeLinks(p, 'commune_1', 'commune_2', 'commune_3', 'commune_4', 'commune_5', 'commune_6');
             return buildDetail('Cavalier minier', 'cavaliers', [
                 {
                     label: 'Localisation', rows: [
-                        communes && ['Communes', communes]
+                        cl && ['Communes', cl]
                     ]
                 },
                 {
@@ -555,7 +677,7 @@
                 {
                     label: 'Identification', rows: [
                         p.id_unesco && ['ID UNESCO', p.id_unesco],
-                        p.element && ['Element', p.element],
+                        p.element && ['Element', elementLink(p.element)],
                         p.objet && ['Objet', p.objet]
                     ]
                 },
@@ -565,13 +687,13 @@
         'espace-neonaturel': p => buildDetail(p.nom || 'Espace neo-naturel', 'espace-neonaturel', [
             {
                 label: 'Localisation', rows: [
-                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2])]
+                    p.commune_1 && ['Commune', communeLinks(p, 'commune_1', 'commune_2')]
                 ]
             },
             {
                 label: 'Identification', rows: [
                     p.id_unesco && ['ID UNESCO', p.id_unesco],
-                    p.element && ['Element', p.element],
+                    p.element && ['Element', elementLink(p.element)],
                     p.objet && ['Objet', p.objet]
                 ]
             },
@@ -580,7 +702,7 @@
         'terrils': p => buildDetail(p.nom || 'Terril', 'terrils', [
             {
                 label: 'Localisation', rows: [
-                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
+                    p.commune_1 && ['Commune', communeLinks(p, 'commune_1', 'commune_2', 'commune_3')]
                 ]
             },
             {
@@ -589,7 +711,7 @@
                     p.compagnie && ['Compagnie', p.compagnie],
                     p.groupe && ['Groupe', p.groupe],
                     p.id_unesco && ['ID UNESCO', p.id_unesco],
-                    p.element && ['Element', p.element],
+                    p.element && ['Element', elementLink(p.element)],
                     p.objet && ['Objet', p.objet]
                 ]
             },
@@ -616,11 +738,11 @@
             { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
         ]),
         'zt-cavaliers': p => {
-            const communes = joinNotNull([p.commune_1, p.commune_2, p.commune_3, p.commune_4]);
+            const cl = communeLinks(p, 'commune_1', 'commune_2', 'commune_3', 'commune_4');
             return buildDetail(p.nom || 'Cavalier (zone tampon)', 'zt-cavaliers', [
                 {
                     label: 'Localisation', rows: [
-                        communes && ['Communes', communes]
+                        cl && ['Communes', cl]
                     ]
                 },
                 {
@@ -637,7 +759,7 @@
             return buildDetail(nom, 'zt-cites-minieres', [
                 {
                     label: 'Localisation', rows: [
-                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
+                        p.commune_1 && ['Commune', communeLinks(p, 'commune_1', 'commune_2', 'commune_3')]
                     ]
                 },
                 {
@@ -654,7 +776,7 @@
         'zt-espaces-neonaturels': p => buildDetail(p.nom || 'Espace neo-naturel (zone tampon)', 'zt-espaces-neonaturels', [
             {
                 label: 'Localisation', rows: [
-                    p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
+                    p.commune_1 && ['Commune', communeLinks(p, 'commune_1', 'commune_2', 'commune_3')]
                 ]
             },
             {
@@ -670,7 +792,7 @@
             return buildDetail(nom, 'zt-terrils', [
                 {
                     label: 'Localisation', rows: [
-                        p.commune_1 && ['Commune', joinNotNull([p.commune_1, p.commune_2, p.commune_3])]
+                        p.commune_1 && ['Commune', communeLinks(p, 'commune_1', 'commune_2', 'commune_3')]
                     ]
                 },
                 {
@@ -695,7 +817,7 @@
             {
                 label: 'Caracteristiques', rows: [
                     p.qualite_vue && ['Qualite de vue', p.qualite_vue],
-                    p.vue_sur && ['Vue sur', p.vue_sur]
+                    p.vue_sur && ['Vue sur', terrilLinks(p.vue_sur) || p.vue_sur]
                 ]
             },
             { label: 'Liens', rows: [sourceRow(dataGouvSources.mbm)] }
@@ -709,7 +831,7 @@
             return buildDetail(title, 'puits-de-mines', [
                 {
                     label: 'Localisation', rows: [
-                        p.commune && ['Commune', p.commune],
+                        p.commune && ['Commune', rawHtml(communeLink(p.commune))],
                         p.concession && ['Concession', p.concession]
                     ]
                 },
@@ -734,7 +856,7 @@
                 },
                 {
                     label: 'Liens', rows: [
-                        p.brgm && ['Fiche BRGM', rawHtml(`<a href="${encodeURI(p.brgm)}" target="_blank" rel="noopener">Voir</a>`)],
+                        p.brgm && ['Fiche BRGM', rawHtml(`<a href="${encodeURI(p.brgm)}" target="_blank" rel="noopener">Voir<span class="cross-link-icon"> \u2197</span></a>`)],
                         sourceRow(dataGouvSources.puits)
                     ]
                 }
@@ -871,6 +993,8 @@
             this._baseLayers = baseLayers;
             this._countSpans = {};
             this._groupLists = [];
+            this._layerToggleBtns = {};
+            this._groupSyncs = [];
         },
         onAdd: function () {
             const aside = L.DomUtil.create('aside', 'layers-drawer');
@@ -993,6 +1117,8 @@
                 setToggleState(groupToggleBtn, anyActive, 'le groupe');
             }
 
+            this._groupSyncs.push({ layerIds: layerDefs.map(d => d.id), sync: syncGroupToggle });
+
             for (const lt of layerToggles) {
                 lt.toggleBtn.closest('.drawer-layer-row').addEventListener('click', () => {
                     setTimeout(syncGroupToggle, 0);
@@ -1069,6 +1195,8 @@
             toggleBtn.type = 'button';
             setToggleState(toggleBtn, isActive, 'la couche');
 
+            self._layerToggleBtns[def.id] = toggleBtn;
+
             row.addEventListener('click', e => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1124,6 +1252,14 @@
             if (this._countSpans[layerId]) {
                 this._countSpans[layerId].textContent = count;
             }
+        },
+        syncLayerState: function (layerId, active) {
+            const btn = this._layerToggleBtns[layerId];
+            if (btn) setToggleState(btn, active, 'la couche');
+            for (const gs of this._groupSyncs) {
+                if (gs.layerIds.includes(layerId)) gs.sync();
+            }
+            this._updateToggleIndicator();
         },
         _toggleBtn: null,
         _updateToggleIndicator: function () {
@@ -1315,9 +1451,7 @@
                 updateClearBtn();
 
                 // Ensure layer is visible
-                if (!map.hasLayer(item.def._leafletLayer)) {
-                    item.def._leafletLayer.addTo(map);
-                }
+                ensureLayerVisible(item.layerId);
 
                 // Zoom to feature
                 if (item.layer.getBounds) {
@@ -1468,6 +1602,16 @@
     const layersDrawer = new LayersDrawer(layerGroups, contextLayers, baseLayers);
     layersDrawer.addTo(map);
 
+    function ensureLayerVisible(layerId) {
+        const def = allLayerDefs.find(d => d.id === layerId);
+        if (!def || !def._leafletLayer) return;
+        if (!map.hasLayer(def._leafletLayer)) {
+            def._leafletLayer.addTo(map);
+            if (layerId === 'bassin-minier' && bassinMask) bassinMask.addTo(map);
+            layersDrawer.syncLayerState(layerId, true);
+        }
+    }
+
     new BottomBarControl().addTo(map);
 
     const boundsGroup = L.featureGroup();
@@ -1529,6 +1673,7 @@
     }
 
     let hoveredLayer = null;
+    const communeIndex = new Map();
 
     function onLayerLoaded() {
         loadedCount++;
@@ -1540,6 +1685,16 @@
             }
         }
         buildSearchIndex();
+
+        // Build commune lookup index
+        const communeDef = allLayerDefs.find(d => d.id === 'communes-mbm');
+        if (communeDef && communeDef._leafletLayer) {
+            communeDef._leafletLayer.eachLayer(layer => {
+                const name = layer.feature.properties.nom;
+                if (name) communeIndex.set(name.toLowerCase(), layer);
+            });
+        }
+
         injectPatterns();
         if (boundsGroup.getBounds().isValid()) {
             map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
