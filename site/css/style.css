@@ -630,6 +630,21 @@ main {
     border-top-color: rgba(0, 0, 0, 0.75);
 }
 
+/* --- Layer texture patterns --- */
+
+.layer-batis { fill: url(#pattern-batis) !important; }
+.layer-cavaliers { fill: url(#pattern-cavaliers) !important; }
+.layer-cites-minieres { fill: url(#pattern-cites-minieres) !important; }
+.layer-espace-neonaturel { fill: url(#pattern-espace-neonaturel) !important; }
+.layer-terrils { fill: url(#pattern-terrils) !important; }
+.layer-bien-inscrit { fill: url(#pattern-bien-inscrit) !important; }
+.layer-zone-tampon { fill: url(#pattern-zone-tampon) !important; }
+.layer-zt-cavaliers { fill: url(#pattern-zt-cavaliers) !important; }
+.layer-zt-cites-minieres { fill: url(#pattern-zt-cites-minieres) !important; }
+.layer-zt-espaces-neonaturels { fill: url(#pattern-zt-espaces-neonaturels) !important; }
+.layer-zt-terrils { fill: url(#pattern-zt-terrils) !important; }
+.layer-zt-parvis-agricoles { fill: url(#pattern-zt-parvis-agricoles) !important; }
+
 /* --- Mobile --- */
 
 @media (max-width: 600px) {
