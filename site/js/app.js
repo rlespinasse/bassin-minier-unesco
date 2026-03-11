@@ -389,22 +389,87 @@
     const detailContent = document.getElementById('detail-content');
     const detailClose = document.getElementById('detail-close');
 
+    const detailBackStack = []; // past entries
+    const detailForwardStack = []; // future entries
+    const detailBack = document.getElementById('detail-back');
+    const detailForward = document.getElementById('detail-forward');
+    const detailClearHistory = document.getElementById('detail-clear-history');
+    const detailSep = detailPanel.querySelector('.panel-actions-sep');
+
+    function updateNavButtons() {
+        const hasBack = detailBackStack.length > 0;
+        const hasForward = detailForwardStack.length > 0;
+        const hasNav = hasBack || hasForward;
+        detailBack.style.display = hasNav ? '' : 'none';
+        detailForward.style.display = hasNav ? '' : 'none';
+        detailClearHistory.style.display = hasNav ? '' : 'none';
+        detailBack.disabled = !hasBack;
+        detailForward.disabled = !hasForward;
+        detailSep.style.display = hasNav ? '' : 'none';
+    }
+
     function showDetail(html) {
         // Mobile: close layers drawer (mutual exclusion)
         if (window.innerWidth <= 600 && layersDrawer && layersDrawer.isOpen()) {
             layersDrawer.close();
         }
+        // Push current content to history when panel is already showing a feature
+        if (detailPanel.classList.contains('open') && detailContent.innerHTML) {
+            detailBackStack.push({
+                html: detailContent.innerHTML,
+                featureInfo: selectedFeatureInfo ? { ...selectedFeatureInfo } : null
+            });
+            detailForwardStack.length = 0;
+        }
         detailContent.innerHTML = html;
         detailPanel.classList.add('open');
+        updateNavButtons();
         map.invalidateSize();
     }
 
     function hideDetail() {
         detailPanel.classList.remove('open');
         selectedFeatureInfo = null;
+        detailBackStack.length = 0;
+        detailForwardStack.length = 0;
+        updateNavButtons();
         map.invalidateSize();
         if (loadedCount >= allLayerDefs.length) updateHash();
     }
+
+    detailBack.addEventListener('click', () => {
+        if (!detailBackStack.length) return;
+        // Save current to forward stack
+        detailForwardStack.push({
+            html: detailContent.innerHTML,
+            featureInfo: selectedFeatureInfo ? { ...selectedFeatureInfo } : null
+        });
+        const prev = detailBackStack.pop();
+        selectedFeatureInfo = prev.featureInfo;
+        detailContent.innerHTML = prev.html;
+        updateNavButtons();
+        if (loadedCount >= allLayerDefs.length) updateHash();
+    });
+
+    detailForward.addEventListener('click', () => {
+        if (!detailForwardStack.length) return;
+        // Save current to back stack
+        detailBackStack.push({
+            html: detailContent.innerHTML,
+            featureInfo: selectedFeatureInfo ? { ...selectedFeatureInfo } : null
+        });
+        const next = detailForwardStack.pop();
+        selectedFeatureInfo = next.featureInfo;
+        detailContent.innerHTML = next.html;
+        updateNavButtons();
+        if (loadedCount >= allLayerDefs.length) updateHash();
+    });
+
+    detailClearHistory.addEventListener('click', () => {
+        detailBackStack.length = 0;
+        detailForwardStack.length = 0;
+        updateNavButtons();
+    });
 
     detailClose.addEventListener('click', hideDetail);
 

@@ -66,23 +66,48 @@ main {
 /* --- Shared patterns --- */
 
 /* Reusable close button (detail panel, layers drawer) */
-.panel-close-btn {
+.panel-actions {
     position: absolute;
     top: 0.5rem;
     right: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    z-index: 1;
+}
+
+.panel-actions-sep {
+    width: 1px;
+    height: 1rem;
+    background: var(--color-border);
+}
+
+.panel-close-btn,
+.panel-nav-btn {
     background: none;
     border: none;
-    font-size: 1.4rem;
     cursor: pointer;
     color: var(--color-text-muted);
     line-height: 1;
     padding: 0.25rem;
-    z-index: 1;
     transition: color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.panel-close-btn:hover {
+.panel-close-btn {
+    font-size: 1.4rem;
+}
+
+.panel-close-btn:hover,
+.panel-nav-btn:hover:not(:disabled) {
     color: var(--color-text);
+}
+
+.panel-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
 }
 
 /* Reusable drag handle (mobile bottom sheets) */
