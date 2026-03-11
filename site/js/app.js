@@ -7,6 +7,10 @@
         return arr.filter(v => v && v !== 'None').join(', ');
     }
 
+    function normalizeText(str) {
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    }
+
     function escapeHtml(str) {
         if (!str) return '';
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -482,7 +486,7 @@
         const value = link.dataset.linkValue;
 
         if (type === 'commune') {
-            const layer = communeIndex.get(value.toLowerCase());
+            const layer = communeIndex.get(normalizeText(value));
             if (!layer) return;
             ensureLayerVisible('communes-mbm');
             if (layer.getBounds) {
@@ -1934,7 +1938,7 @@
         if (communeDef && communeDef._leafletLayer) {
             communeDef._leafletLayer.eachLayer(layer => {
                 const name = layer.feature.properties.nom;
-                if (name) communeIndex.set(name.toLowerCase(), layer);
+                if (name) communeIndex.set(normalizeText(name), layer);
             });
         }
 
