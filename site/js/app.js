@@ -3,13 +3,16 @@
 
     // --- Analytics ---
 
+    function isLocalhost() {
+        return location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '0.0.0.0';
+    }
     function trackEvent(path, title) {
-        if (window.goatcounter && window.goatcounter.count) {
+        if (!isLocalhost() && window.goatcounter && window.goatcounter.count) {
             window.goatcounter.count({ path: path, title: title, event: true });
         }
     }
     function trackPageView() {
-        if (window.goatcounter && window.goatcounter.count) {
+        if (!isLocalhost() && window.goatcounter && window.goatcounter.count) {
             window.goatcounter.count({ path: location.pathname + location.hash, title: document.title });
         }
     }
