@@ -401,7 +401,9 @@
 
     function hideDetail() {
         detailPanel.classList.remove('open');
+        selectedFeatureInfo = null;
         map.invalidateSize();
+        if (loadedCount >= allLayerDefs.length) updateHash();
     }
 
     detailClose.addEventListener('click', hideDetail);
@@ -423,7 +425,11 @@
             }
             // Open detail panel
             const builder = detailBuilders['communes-mbm'];
-            if (builder) showDetail(builder(layer.feature.properties));
+            if (builder) {
+                selectedFeatureInfo = { layerId: 'communes-mbm', featureIndex: findFeatureIndex('communes-mbm', layer) };
+                showDetail(builder(layer.feature.properties));
+                updateHash();
+            }
             // Brief highlight
             if (layer.setStyle) {
                 const orig = styles['communes-mbm'];
@@ -456,7 +462,11 @@
             }
             // Open detail
             const builder = detailBuilders[foundLayerId];
-            if (builder) showDetail(builder(found.feature.properties));
+            if (builder) {
+                selectedFeatureInfo = { layerId: foundLayerId, featureIndex: findFeatureIndex(foundLayerId, found) };
+                showDetail(builder(found.feature.properties));
+                updateHash();
+            }
         } else if (type === 'element') {
             // Find all features sharing this element across UNESCO layers
             const elementLayers = ['batis', 'cites-minieres', 'cavaliers', 'espace-neonaturel', 'terrils'];
@@ -487,7 +497,11 @@
             // Open detail panel for the first match
             const first = matches[0];
             const elBuilder = detailBuilders[first.layerId];
-            if (elBuilder) showDetail(elBuilder(first.layer.feature.properties));
+            if (elBuilder) {
+                selectedFeatureInfo = { layerId: first.layerId, featureIndex: findFeatureIndex(first.layerId, first.layer) };
+                showDetail(elBuilder(first.layer.feature.properties));
+                updateHash();
+            }
             // Brief highlight all matches
             for (const m of matches) {
                 if (m.layer.setStyle) {
@@ -1082,6 +1096,7 @@
                     card.classList.add('active');
                     card.setAttribute('aria-pressed', 'true');
                     self._map.fire('baselayerchange', { name, layer: self._baseLayers[name] });
+                    updateHash();
                 });
             }
 
@@ -1214,6 +1229,7 @@
                     }
                 }
                 self._updateToggleIndicator();
+                    updateHash();
             });
 
             return toggleBtn;
@@ -1463,7 +1479,9 @@
                 // Open detail panel
                 const builder = detailBuilders[item.layerId];
                 if (builder) {
+                    selectedFeatureInfo = { layerId: item.layerId, featureIndex: findFeatureIndex(item.layerId, item.layer) };
                     showDetail(builder(item.layer.feature.properties));
+                    updateHash();
                 }
 
                 // Highlight briefly
@@ -1568,6 +1586,13 @@
             fullExtent.setAttribute('aria-label', 'Vue d\'ensemble');
             fullExtent.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
 
+            const resetView = L.DomUtil.create('a', 'leaflet-control-reset-view', zoomBar);
+            resetView.href = '#';
+            resetView.title = 'Réinitialiser la vue';
+            resetView.setAttribute('role', 'button');
+            resetView.setAttribute('aria-label', 'Réinitialiser la vue');
+            resetView.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
+
             const zoomOut = L.DomUtil.create('a', 'leaflet-control-zoom-out', zoomBar);
             zoomOut.href = '#';
             zoomOut.title = 'Zoom arrière';
@@ -1587,6 +1612,10 @@
                 } else {
                     map.setView([50.35, 2.8], 10);
                 }
+            });
+            L.DomEvent.on(resetView, 'click', e => {
+                L.DomEvent.preventDefault(e);
+                resetToDefaults();
             });
             L.DomEvent.on(zoomOut, 'click', e => {
                 L.DomEvent.preventDefault(e);
@@ -1675,6 +1704,155 @@
     let hoveredLayer = null;
     const communeIndex = new Map();
 
+    // --- URL hash state ---
+
+    // Track the currently selected feature for URL sharing
+    let selectedFeatureInfo = null; // { layerId, featureIndex }
+
+    function getDefaultLayerIds() {
+        return allLayerDefs.filter(d => d.active !== false).map(d => d.id);
+    }
+
+    function getActiveLayerIds() {
+        return allLayerDefs
+            .filter(d => d._leafletLayer && map.hasLayer(d._leafletLayer))
+            .map(d => d.id);
+    }
+
+    function getActiveBaseLayerName() {
+        for (const name of Object.keys(baseLayers)) {
+            if (map.hasLayer(baseLayers[name])) return name;
+        }
+        return 'Clair';
+    }
+
+    function arraysEqual(a, b) {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
+    }
+
+    function updateHash() {
+        const params = new URLSearchParams();
+
+        // Layers: only include if different from defaults
+        const activeLayers = getActiveLayerIds();
+        const defaultLayers = getDefaultLayerIds();
+        if (!arraysEqual(activeLayers.slice().sort(), defaultLayers.slice().sort())) {
+            params.set('layers', activeLayers.join(','));
+        }
+
+        // Base layer: only include if not the default (Clair)
+        const base = getActiveBaseLayerName();
+        if (base !== 'Clair') {
+            params.set('base', base);
+        }
+
+        // Map view
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+        params.set('lat', center.lat.toFixed(5));
+        params.set('lng', center.lng.toFixed(5));
+        params.set('z', zoom);
+
+        // Selected feature
+        if (selectedFeatureInfo) {
+            params.set('sel', selectedFeatureInfo.layerId + ',' + selectedFeatureInfo.featureIndex);
+        }
+
+        const hash = params.toString();
+        history.replaceState(null, '', '#' + hash);
+    }
+
+    function parseHash() {
+        const hash = location.hash.replace(/^#/, '');
+        if (!hash) return null;
+        const params = new URLSearchParams(hash);
+        const state = {};
+
+        if (params.has('layers')) {
+            state.layers = params.get('layers').split(',').filter(Boolean);
+        }
+        if (params.has('base')) {
+            state.base = params.get('base');
+        }
+        if (params.has('lat') && params.has('lng') && params.has('z')) {
+            state.lat = parseFloat(params.get('lat'));
+            state.lng = parseFloat(params.get('lng'));
+            state.zoom = parseInt(params.get('z'), 10);
+        }
+        if (params.has('sel')) {
+            const parts = params.get('sel').split(',');
+            if (parts.length >= 2) {
+                state.sel = { layerId: parts[0], featureIndex: parseInt(parts[1], 10) };
+            }
+        }
+        return state;
+    }
+
+    function resetToDefaults() {
+        // Close detail panel
+        hideDetail();
+
+        // Close layers drawer
+        if (layersDrawer && layersDrawer.isOpen()) layersDrawer.close();
+
+        // Restore default layers
+        for (const def of allLayerDefs) {
+            if (!def._leafletLayer) continue;
+            const shouldBeActive = def.active !== false;
+            const isActive = map.hasLayer(def._leafletLayer);
+            if (shouldBeActive && !isActive) {
+                def._leafletLayer.addTo(map);
+                if (def.id === 'bassin-minier' && bassinMask) bassinMask.addTo(map);
+            } else if (!shouldBeActive && isActive) {
+                map.removeLayer(def._leafletLayer);
+                if (def.id === 'bassin-minier' && bassinMask) map.removeLayer(bassinMask);
+            }
+            layersDrawer.syncLayerState(def.id, shouldBeActive);
+        }
+
+        // Restore default base layer (Clair)
+        for (const name of Object.keys(baseLayers)) {
+            map.removeLayer(baseLayers[name]);
+        }
+        baseLayers['Clair'].addTo(map);
+        const cards = document.querySelectorAll('.drawer-base-card');
+        cards.forEach(c => {
+            const label = c.querySelector('.drawer-base-card-label');
+            const isMatch = label && label.textContent === 'Clair';
+            c.classList.toggle('active', isMatch);
+            c.setAttribute('aria-pressed', isMatch);
+        });
+
+        // Restore default view
+        if (boundsGroup.getBounds().isValid()) {
+            map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+        } else {
+            map.setView([50.35, 2.8], 10);
+        }
+
+        // Clear URL hash
+        history.replaceState(null, '', location.pathname + location.search);
+    }
+
+    function findFeatureIndex(layerId, targetLayer) {
+        const def = allLayerDefs.find(d => d.id === layerId);
+        if (!def || !def._leafletLayer) return -1;
+        let idx = 0;
+        let found = -1;
+        def._leafletLayer.eachLayer(lyr => {
+            if (lyr === targetLayer) found = idx;
+            idx++;
+        });
+        return found;
+    }
+
+    // Save hash state parsed before loading, to apply after all layers are ready
+    const initialHashState = parseHash();
+
     function onLayerLoaded() {
         loadedCount++;
         if (loadedCount < allLayerDefs.length) return;
@@ -1696,9 +1874,77 @@
         }
 
         injectPatterns();
-        if (boundsGroup.getBounds().isValid()) {
-            map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+
+        // Apply initial URL hash state or default bounds
+        if (initialHashState) {
+            // Restore layers
+            if (initialHashState.layers) {
+                for (const def of allLayerDefs) {
+                    if (!def._leafletLayer) continue;
+                    const shouldBeActive = initialHashState.layers.includes(def.id);
+                    const isActive = map.hasLayer(def._leafletLayer);
+                    if (shouldBeActive && !isActive) {
+                        def._leafletLayer.addTo(map);
+                        if (def.id === 'bassin-minier' && bassinMask) bassinMask.addTo(map);
+                    } else if (!shouldBeActive && isActive) {
+                        map.removeLayer(def._leafletLayer);
+                        if (def.id === 'bassin-minier' && bassinMask) map.removeLayer(bassinMask);
+                    }
+                    layersDrawer.syncLayerState(def.id, shouldBeActive);
+                }
+            }
+
+            // Restore base layer
+            if (initialHashState.base && baseLayers[initialHashState.base]) {
+                for (const name of Object.keys(baseLayers)) {
+                    map.removeLayer(baseLayers[name]);
+                }
+                baseLayers[initialHashState.base].addTo(map);
+                // Sync base layer cards in drawer
+                const cards = document.querySelectorAll('.drawer-base-card');
+                cards.forEach(c => {
+                    const label = c.querySelector('.drawer-base-card-label');
+                    const isMatch = label && label.textContent === initialHashState.base;
+                    c.classList.toggle('active', isMatch);
+                    c.setAttribute('aria-pressed', isMatch);
+                });
+            }
+
+            // Restore map view
+            if (initialHashState.lat !== undefined) {
+                map.setView([initialHashState.lat, initialHashState.lng], initialHashState.zoom);
+            } else if (boundsGroup.getBounds().isValid()) {
+                map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+            }
+
+            // Restore selected feature
+            if (initialHashState.sel) {
+                const { layerId, featureIndex } = initialHashState.sel;
+                const def = allLayerDefs.find(d => d.id === layerId);
+                if (def && def._leafletLayer) {
+                    ensureLayerVisible(layerId);
+                    let idx = 0;
+                    def._leafletLayer.eachLayer(lyr => {
+                        if (idx === featureIndex) {
+                            const builder = detailBuilders[layerId];
+                            if (builder) {
+                                selectedFeatureInfo = { layerId, featureIndex };
+                                showDetail(builder(lyr.feature.properties));
+                            }
+                        }
+                        idx++;
+                    });
+                }
+            }
+        } else {
+            if (boundsGroup.getBounds().isValid()) {
+                map.fitBounds(boundsGroup.getBounds(), { padding: [20, 20] });
+            }
         }
+
+        // Start updating hash on map move (after initial state is applied)
+        map.on('moveend', updateHash);
+
         if (loadingOverlay) {
             loadingOverlay.classList.add('fade-out');
             setTimeout(() => {
@@ -1727,7 +1973,11 @@
                         if (builder) {
                             layer.on('click', e => {
                                 L.DomEvent.stopPropagation(e);
+                                // Track selected feature for URL sharing
+                                const idx = geojson.features.indexOf(feature);
+                                selectedFeatureInfo = { layerId: def.id, featureIndex: idx };
                                 showDetail(builder(feature.properties));
+                                updateHash();
                             });
                         }
 
