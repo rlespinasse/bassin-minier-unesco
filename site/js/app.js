@@ -8,7 +8,7 @@
     }
     function trackEvent(path, title) {
         if (!isLocalhost() && window.goatcounter && window.goatcounter.count) {
-            window.goatcounter.count({ path: path, title: title, event: true });
+            window.goatcounter.count({ path: '/bassin-minier-unesco/' + path, title: title, event: true });
         }
     }
     function trackPageView() {
