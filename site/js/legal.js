@@ -68,7 +68,7 @@ export function buildLegalPages(dataGouvSources) {
 
                 <h3>Bibliothèques</h3>
                 <ul>
-                    <li><a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a></li>
+                    <li><a href="https://github.com/rlespinasse/leaflet-atlas" target="_blank" rel="noopener">leaflet-atlas</a> (basé sur <a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a>)</li>
                 </ul>
 
                 <h3>Analyse d'audience</h3>
