@@ -134,14 +134,3 @@
     font-size: 0.8rem;
     text-align: center;
 }
-
-@media (max-width: 600px) {
-    .search-control input:focus,
-    .search-control input.expanded {
-        width: 200px;
-    }
-
-    .search-results {
-        width: 200px;
-    }
-}

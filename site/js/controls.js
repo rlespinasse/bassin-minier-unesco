@@ -1,0 +1,806 @@
+// --- Leaflet UI controls ---
+
+import { styles, layerPatterns } from './config.js';
+import { setToggleState, trackEvent, escapeHtml, getHoverStyle, normalizeText } from './helpers.js';
+
+// --- Pattern helpers ---
+
+export function buildPatternContent(parent, cfg, color) {
+    const NS = 'http://www.w3.org/2000/svg';
+    switch (cfg.type) {
+        case 'diagonal': {
+            const line = document.createElementNS(NS, 'line');
+            line.setAttribute('x1', 0);
+            line.setAttribute('y1', cfg.size);
+            line.setAttribute('x2', cfg.size);
+            line.setAttribute('y2', 0);
+            line.setAttribute('stroke', color);
+            line.setAttribute('stroke-width', cfg.strokeWidth);
+            parent.appendChild(line);
+            break;
+        }
+        case 'crosshatch': {
+            const l1 = document.createElementNS(NS, 'line');
+            l1.setAttribute('x1', 0); l1.setAttribute('y1', cfg.size);
+            l1.setAttribute('x2', cfg.size); l1.setAttribute('y2', 0);
+            l1.setAttribute('stroke', color); l1.setAttribute('stroke-width', cfg.strokeWidth);
+            const l2 = document.createElementNS(NS, 'line');
+            l2.setAttribute('x1', 0); l2.setAttribute('y1', 0);
+            l2.setAttribute('x2', cfg.size); l2.setAttribute('y2', cfg.size);
+            l2.setAttribute('stroke', color); l2.setAttribute('stroke-width', cfg.strokeWidth);
+            parent.appendChild(l1);
+            parent.appendChild(l2);
+            break;
+        }
+        case 'dots': {
+            const c = document.createElementNS(NS, 'circle');
+            c.setAttribute('cx', cfg.size / 2);
+            c.setAttribute('cy', cfg.size / 2);
+            c.setAttribute('r', cfg.radius);
+            c.setAttribute('fill', color);
+            parent.appendChild(c);
+            break;
+        }
+        case 'stipple': {
+            const c1 = document.createElementNS(NS, 'circle');
+            c1.setAttribute('cx', cfg.size * 0.25);
+            c1.setAttribute('cy', cfg.size * 0.25);
+            c1.setAttribute('r', cfg.radius);
+            c1.setAttribute('fill', color);
+            const c2 = document.createElementNS(NS, 'circle');
+            c2.setAttribute('cx', cfg.size * 0.75);
+            c2.setAttribute('cy', cfg.size * 0.7);
+            c2.setAttribute('r', cfg.radius);
+            c2.setAttribute('fill', color);
+            parent.appendChild(c1);
+            parent.appendChild(c2);
+            break;
+        }
+        case 'circles': {
+            const c = document.createElementNS(NS, 'circle');
+            c.setAttribute('cx', cfg.size / 2);
+            c.setAttribute('cy', cfg.size / 2);
+            c.setAttribute('r', cfg.radius);
+            c.setAttribute('fill', 'none');
+            c.setAttribute('stroke', color);
+            c.setAttribute('stroke-width', cfg.strokeWidth);
+            parent.appendChild(c);
+            break;
+        }
+        case 'horizontal': {
+            const line = document.createElementNS(NS, 'line');
+            line.setAttribute('x1', 0);
+            line.setAttribute('y1', cfg.size / 2);
+            line.setAttribute('x2', cfg.size);
+            line.setAttribute('y2', cfg.size / 2);
+            line.setAttribute('stroke', color);
+            line.setAttribute('stroke-width', cfg.strokeWidth);
+            parent.appendChild(line);
+            break;
+        }
+    }
+}
+
+export function createPatternDefs() {
+    const NS = 'http://www.w3.org/2000/svg';
+    const defs = document.createElementNS(NS, 'defs');
+    defs.setAttribute('data-map-patterns', 'true');
+
+    for (const [layerId, cfg] of Object.entries(layerPatterns)) {
+        const style = styles[layerId];
+        if (!style) continue;
+        const color = style.fillColor || style.color;
+        const pat = document.createElementNS(NS, 'pattern');
+        pat.setAttribute('id', `pattern-${layerId}`);
+        pat.setAttribute('patternUnits', 'userSpaceOnUse');
+        pat.setAttribute('width', cfg.size);
+        pat.setAttribute('height', cfg.size);
+        buildPatternContent(pat, cfg, color);
+        defs.appendChild(pat);
+    }
+    return defs;
+}
+
+export function injectPatterns() {
+    const svgs = document.querySelectorAll('.leaflet-overlay-pane svg, .leaflet-pane svg');
+    svgs.forEach(svg => {
+        const existing = svg.querySelector('defs[data-map-patterns]');
+        if (existing) return;
+        svg.insertBefore(createPatternDefs(), svg.firstChild);
+    });
+}
+
+// --- Legend swatch ---
+
+export function getLayerGeomType(layerId) {
+    if (styles[layerId] && styles[layerId].radius) return 'point';
+    if (layerId === 'cavaliers' || layerId === 'zt-cavaliers') return 'line';
+    return 'polygon';
+}
+
+export function createSwatch(layerId) {
+    const style = styles[layerId];
+    const geom = getLayerGeomType(layerId);
+    const color = style.fillColor || style.color;
+    const swatch = document.createElement('span');
+    swatch.className = 'layer-swatch';
+
+    if (geom === 'point') {
+        swatch.classList.add('layer-swatch-point');
+        swatch.style.background = color;
+        swatch.style.border = `1.5px solid ${style.color}`;
+    } else if (geom === 'line') {
+        swatch.classList.add('layer-swatch-line');
+        swatch.style.background = style.dashArray
+            ? `repeating-linear-gradient(90deg, ${style.color} 0, ${style.color} 4px, transparent 4px, transparent 7px)`
+            : style.color;
+    } else if (layerPatterns[layerId]) {
+        swatch.classList.add('layer-swatch-polygon');
+        const W = 20, H = 12, B = 1.5;
+        const NS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('width', W);
+        svg.setAttribute('height', H);
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+        svg.style.display = 'block';
+        const bgRect = document.createElementNS(NS, 'rect');
+        bgRect.setAttribute('x', B); bgRect.setAttribute('y', B);
+        bgRect.setAttribute('width', W - B * 2); bgRect.setAttribute('height', H - B * 2);
+        bgRect.setAttribute('fill', color);
+        bgRect.setAttribute('fill-opacity', Math.max(style.fillOpacity || 0.3, 0.4));
+        svg.appendChild(bgRect);
+        const defs = document.createElementNS(NS, 'defs');
+        const cfg = layerPatterns[layerId];
+        const pat = document.createElementNS(NS, 'pattern');
+        const patId = `swatch-pattern-${layerId}`;
+        pat.setAttribute('id', patId);
+        pat.setAttribute('patternUnits', 'userSpaceOnUse');
+        pat.setAttribute('width', cfg.size);
+        pat.setAttribute('height', cfg.size);
+        buildPatternContent(pat, cfg, color);
+        defs.appendChild(pat);
+        svg.appendChild(defs);
+        const patRect = document.createElementNS(NS, 'rect');
+        patRect.setAttribute('x', B); patRect.setAttribute('y', B);
+        patRect.setAttribute('width', W - B * 2); patRect.setAttribute('height', H - B * 2);
+        patRect.setAttribute('fill', `url(#${patId})`);
+        svg.appendChild(patRect);
+        const borderRect = document.createElementNS(NS, 'rect');
+        borderRect.setAttribute('x', B / 2); borderRect.setAttribute('y', B / 2);
+        borderRect.setAttribute('width', W - B); borderRect.setAttribute('height', H - B);
+        borderRect.setAttribute('rx', 2);
+        borderRect.setAttribute('fill', 'none');
+        borderRect.setAttribute('stroke', style.color);
+        borderRect.setAttribute('stroke-width', B);
+        if (style.dashArray) borderRect.setAttribute('stroke-dasharray', style.dashArray);
+        svg.appendChild(borderRect);
+        swatch.appendChild(svg);
+    } else {
+        swatch.classList.add('layer-swatch-polygon');
+        swatch.style.background = color;
+        swatch.style.opacity = Math.max(style.fillOpacity || 0.3, 0.4);
+        swatch.style.border = `1.5px solid ${style.color}`;
+        if (style.dashArray) {
+            swatch.style.borderStyle = 'dashed';
+        }
+    }
+    return swatch;
+}
+
+// --- Layers Drawer ---
+
+export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersDef, baseLayerThumbnails, {
+    map, bassinMaskRef, hideDetail, updateHash, allLayerDefs
+}) {
+    const LayersDrawer = L.Control.extend({
+        options: { position: 'topleft' },
+        initialize: function (layerGroups, contextLayers, baseLayers, options) {
+            L.Util.setOptions(this, options);
+            this._layerGroups = layerGroups;
+            this._contextLayers = contextLayers;
+            this._baseLayers = baseLayers;
+            this._countSpans = {};
+            this._groupLists = [];
+            this._layerToggleBtns = {};
+            this._groupSyncs = [];
+        },
+        onAdd: function () {
+            const aside = L.DomUtil.create('aside', 'layers-drawer');
+            L.DomEvent.disableClickPropagation(aside);
+            L.DomEvent.disableScrollPropagation(aside);
+            const self = this;
+            this._aside = aside;
+
+            L.DomUtil.create('div', 'drag-handle', aside);
+
+            const header = L.DomUtil.create('div', 'layers-drawer-header', aside);
+            const title = L.DomUtil.create('span', 'layers-drawer-title', header);
+            title.textContent = 'Couches';
+            const closeBtn = L.DomUtil.create('button', 'panel-close-btn', header);
+            closeBtn.innerHTML = '&times;';
+            closeBtn.title = 'Fermer';
+            closeBtn.setAttribute('aria-label', 'Fermer');
+            closeBtn.addEventListener('click', () => self.close());
+
+            const tabBar = L.DomUtil.create('div', 'layers-drawer-tabs', aside);
+            const tabCouches = L.DomUtil.create('button', 'layers-drawer-tab active', tabBar);
+            tabCouches.type = 'button';
+            tabCouches.textContent = 'Couches';
+            const tabFond = L.DomUtil.create('button', 'layers-drawer-tab', tabBar);
+            tabFond.type = 'button';
+            tabFond.textContent = 'Fond de carte';
+
+            const contentCouches = L.DomUtil.create('div', 'layers-drawer-tab-content active', aside);
+            const contentFond = L.DomUtil.create('div', 'layers-drawer-tab-content', aside);
+
+            tabCouches.addEventListener('click', () => {
+                tabCouches.classList.add('active');
+                tabFond.classList.remove('active');
+                contentCouches.classList.add('active');
+                contentFond.classList.remove('active');
+            });
+            tabFond.addEventListener('click', () => {
+                tabFond.classList.add('active');
+                tabCouches.classList.remove('active');
+                contentFond.classList.add('active');
+                contentCouches.classList.remove('active');
+            });
+
+            this._buildGroupSection(contentCouches, 'Contexte', this._contextLayers, true);
+
+            for (const g of this._layerGroups) {
+                this._buildGroupSection(contentCouches, g.group, g.layers, false);
+            }
+
+            const cardList = L.DomUtil.create('div', 'drawer-base-cards', contentFond);
+            const activeName = Object.keys(this._baseLayers).find(n =>
+                self._map.hasLayer(self._baseLayers[n])
+            ) || Object.keys(this._baseLayers)[0];
+
+            const baseCards = [];
+            for (const name of Object.keys(this._baseLayers)) {
+                const card = L.DomUtil.create('button', 'drawer-base-card', cardList);
+                const isActive = name === activeName;
+                if (isActive) card.classList.add('active');
+                card.type = 'button';
+                card.setAttribute('aria-pressed', isActive);
+                if (baseLayerThumbnails[name]) {
+                    const thumb = L.DomUtil.create('img', 'drawer-base-card-thumb', card);
+                    thumb.src = baseLayerThumbnails[name];
+                    thumb.alt = name;
+                    thumb.loading = 'lazy';
+                }
+                const cardLabel = L.DomUtil.create('span', 'drawer-base-card-label', card);
+                cardLabel.textContent = name;
+                baseCards.push(card);
+                card.addEventListener('click', () => {
+                    trackEvent('event/basemap', 'Base map change');
+                    for (const n of Object.keys(self._baseLayers)) {
+                        self._map.removeLayer(self._baseLayers[n]);
+                    }
+                    self._baseLayers[name].addTo(self._map);
+                    for (const c of baseCards) {
+                        c.classList.remove('active');
+                        c.setAttribute('aria-pressed', 'false');
+                    }
+                    card.classList.add('active');
+                    card.setAttribute('aria-pressed', 'true');
+                    self._map.fire('baselayerchange', { name, layer: self._baseLayers[name] });
+                    updateHash();
+                });
+            }
+
+            document.querySelector('main').appendChild(aside);
+            const dummy = L.DomUtil.create('div');
+            dummy.style.display = 'none';
+            return dummy;
+        },
+
+        _buildGroupSection: function (container, groupLabel, layerDefs, isContext) {
+            const self = this;
+            const groupHeader = L.DomUtil.create('div', 'drawer-group-header', container);
+            const toggleArrow = L.DomUtil.create('span', 'drawer-group-toggle', groupHeader);
+            const groupSpan = L.DomUtil.create('span', 'drawer-group-label', groupHeader);
+            groupSpan.textContent = isContext ? groupLabel : ` ${groupLabel}`;
+
+            const activeCount = layerDefs.filter(d => d.active !== false).length;
+            const allActive = activeCount === layerDefs.length;
+            const someActive = activeCount > 0;
+            const isPartial = someActive && !allActive;
+            const groupToggleBtn = L.DomUtil.create('button', 'layer-toggle-btn' + (isContext ? '' : ' group-toggle-btn'), groupHeader);
+            groupToggleBtn.type = 'button';
+            setToggleState(groupToggleBtn, someActive, 'le groupe', isPartial);
+
+            const groupList = L.DomUtil.create('div', 'drawer-group-list', container);
+            const layerToggles = [];
+
+            for (const def of layerDefs) {
+                const toggleBtn = self._buildLayerRow(groupList, def, isContext);
+                layerToggles.push({ toggleBtn, def });
+            }
+
+            function syncGroupToggle() {
+                const activeCount = layerToggles.filter(lt => lt.toggleBtn.classList.contains('active')).length;
+                const allActive = activeCount === layerToggles.length;
+                const anyActive = activeCount > 0;
+                const isPartial = anyActive && !allActive;
+                setToggleState(groupToggleBtn, anyActive, 'le groupe', isPartial);
+            }
+
+            this._groupSyncs.push({ layerIds: layerDefs.map(d => d.id), sync: syncGroupToggle });
+
+            for (const lt of layerToggles) {
+                lt.toggleBtn.closest('.drawer-layer-row').addEventListener('click', () => {
+                    setTimeout(syncGroupToggle, 0);
+                });
+            }
+
+            groupToggleBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                const nowActive = groupToggleBtn.classList.contains('active');
+                for (const lt of layerToggles) {
+                    const isLayerActive = lt.toggleBtn.classList.contains('active');
+                    if (nowActive && isLayerActive) {
+                        setToggleState(lt.toggleBtn, false, 'la couche');
+                        if (lt.def._leafletLayer) self._map.removeLayer(lt.def._leafletLayer);
+                        if (lt.def._clickLayer) self._map.removeLayer(lt.def._clickLayer);
+                        if (isContext && lt.def.id === 'bassin-minier' && bassinMaskRef()) {
+                            self._map.removeLayer(bassinMaskRef());
+                        }
+                    } else if (!nowActive && !isLayerActive) {
+                        setToggleState(lt.toggleBtn, true, 'la couche');
+                        if (lt.def._leafletLayer) lt.def._leafletLayer.addTo(self._map);
+                        if (lt.def._clickLayer) lt.def._clickLayer.addTo(self._map);
+                        if (isContext && lt.def.id === 'bassin-minier' && bassinMaskRef()) {
+                            bassinMaskRef().addTo(self._map);
+                        }
+                    }
+                }
+                if (!nowActive && groupList.classList.contains('collapsed')) {
+                    groupList.classList.remove('collapsed');
+                    toggleArrow.classList.remove('collapsed');
+                    groupList.style.maxHeight = `${groupList.scrollHeight}px`;
+                }
+                syncGroupToggle();
+                self._updateToggleIndicator();
+            });
+
+            const isCollapsed = !someActive;
+            if (isCollapsed) {
+                groupList.classList.add('collapsed');
+                toggleArrow.classList.add('collapsed');
+            }
+            this._groupLists.push(groupList);
+
+            toggleArrow.addEventListener('click', e => {
+                e.stopPropagation();
+                if (groupList.classList.contains('collapsed')) {
+                    groupList.classList.remove('collapsed');
+                    toggleArrow.classList.remove('collapsed');
+                    groupList.style.maxHeight = `${groupList.scrollHeight}px`;
+                } else {
+                    groupList.style.maxHeight = `${groupList.scrollHeight}px`;
+                    groupList.offsetHeight; // force reflow
+                    groupList.classList.add('collapsed');
+                    toggleArrow.classList.add('collapsed');
+                }
+            });
+        },
+
+        _buildLayerRow: function (container, def, isContext) {
+            const self = this;
+            const row = L.DomUtil.create('div', 'drawer-layer-row', container);
+            const color = styles[def.id].fillColor || styles[def.id].color;
+            row.style.setProperty('--layer-color', color);
+
+            row.appendChild(createSwatch(def.id));
+
+            const label = L.DomUtil.create('span', 'drawer-layer-label', row);
+            label.textContent = def.label;
+
+            const countSpan = L.DomUtil.create('span', 'drawer-layer-count', row);
+            self._countSpans[def.id] = countSpan;
+
+            const isActive = def.active !== false;
+            const toggleBtn = L.DomUtil.create('button', 'layer-toggle-btn', row);
+            toggleBtn.type = 'button';
+            setToggleState(toggleBtn, isActive, 'la couche');
+
+            self._layerToggleBtns[def.id] = toggleBtn;
+
+            row.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                const nowActive = toggleBtn.classList.contains('active');
+                trackEvent('event/layer-toggle', 'Layer toggle');
+                setToggleState(toggleBtn, !nowActive, 'la couche');
+                if (nowActive) {
+                    if (def._leafletLayer) self._map.removeLayer(def._leafletLayer);
+                    if (def._clickLayer) self._map.removeLayer(def._clickLayer);
+                    if (isContext && def.id === 'bassin-minier' && bassinMaskRef()) {
+                        self._map.removeLayer(bassinMaskRef());
+                    }
+                } else {
+                    if (def._leafletLayer) def._leafletLayer.addTo(self._map);
+                    if (def._clickLayer) def._clickLayer.addTo(self._map);
+                    if (isContext && def.id === 'bassin-minier' && bassinMaskRef()) {
+                        bassinMaskRef().addTo(self._map);
+                    }
+                }
+                self._updateToggleIndicator();
+                updateHash();
+            });
+
+            return toggleBtn;
+        },
+        open: function () {
+            this._aside.classList.add('open');
+            const self = this;
+            requestAnimationFrame(() => {
+                for (const gl of self._groupLists) {
+                    if (!gl.classList.contains('collapsed')) {
+                        gl.style.maxHeight = `${gl.scrollHeight}px`;
+                    }
+                }
+            });
+            if (window.innerWidth <= 600) {
+                hideDetail();
+            }
+            this._map.invalidateSize();
+        },
+        close: function () {
+            this._aside.classList.remove('open');
+            this._map.invalidateSize();
+        },
+        toggle: function () {
+            if (this._aside.classList.contains('open')) {
+                this.close();
+            } else {
+                this.open();
+            }
+        },
+        isOpen: function () {
+            return this._aside.classList.contains('open');
+        },
+        updateCount: function (layerId, count) {
+            if (this._countSpans[layerId]) {
+                this._countSpans[layerId].textContent = count;
+            }
+        },
+        syncLayerState: function (layerId, active) {
+            const btn = this._layerToggleBtns[layerId];
+            if (btn) setToggleState(btn, active, 'la couche');
+            for (const gs of this._groupSyncs) {
+                if (gs.layerIds.includes(layerId)) gs.sync();
+            }
+            this._updateToggleIndicator();
+        },
+        _toggleBtn: null,
+        _updateToggleIndicator: function () {
+            if (!this._toggleBtn) return;
+            let hasNonDefault = false;
+            for (const g of this._layerGroups) {
+                for (const def of g.layers) {
+                    if (!def._leafletLayer) continue;
+                    const isOnMap = map.hasLayer(def._leafletLayer);
+                    const wasDefault = def.active !== false;
+                    if (isOnMap !== wasDefault) hasNonDefault = true;
+                }
+            }
+            for (const def of this._contextLayers) {
+                if (!def._leafletLayer) continue;
+                const isOnMap = map.hasLayer(def._leafletLayer);
+                const wasDefault = def.active !== false;
+                if (isOnMap !== wasDefault) hasNonDefault = true;
+            }
+            this._toggleBtn.classList.toggle('has-active', hasNonDefault);
+        }
+    });
+
+    return new LayersDrawer(layerGroupsDef, contextLayersDef, baseLayersDef);
+}
+
+// --- Search Control ---
+
+export function createSearchControl({
+    map, styles, searchIndex, allLayerDefs, detailBuilders,
+    ensureLayerVisible, showDetail, updateHash, findFeatureIndex,
+    setSelectedFeatureInfo, searchInputRef
+}) {
+    const SearchControl = L.Control.extend({
+        options: { position: 'topleft' },
+        onAdd: function () {
+            const container = L.DomUtil.create('div', 'search-control');
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+
+            const inputWrapper = L.DomUtil.create('div', 'search-input-wrapper', container);
+            const input = L.DomUtil.create('input', '', inputWrapper);
+            input.type = 'text';
+            input.placeholder = 'Rechercher un lieu...';
+            input.setAttribute('aria-label', 'Rechercher');
+            searchInputRef(input);
+
+            const clearBtn = L.DomUtil.create('button', 'search-clear', inputWrapper);
+            clearBtn.type = 'button';
+            clearBtn.innerHTML = '&times;';
+            clearBtn.title = 'Effacer';
+            clearBtn.setAttribute('aria-label', 'Effacer la recherche');
+
+            const results = L.DomUtil.create('div', 'search-results', container);
+            let activeIndex = -1;
+            let previewLayer = null;
+            let previewLayerId = null;
+            let currentResults = [];
+
+            function previewHighlight(item) {
+                previewUnhighlight();
+                if (!item || !item.layer) return;
+                previewLayer = item.layer;
+                previewLayerId = item.layerId;
+                if (previewLayer.setStyle) {
+                    previewLayer.setStyle(getHoverStyle(item.layerId));
+                    if (previewLayer.bringToFront && item.layerId !== 'bassin-minier' && item.layerId !== 'communes-mbm' && item.layerId !== 'epci' && item.layerId !== 'departements') {
+                        previewLayer.bringToFront();
+                    }
+                }
+                if (previewLayer.getTooltip && previewLayer.getTooltip()) {
+                    previewLayer.openTooltip();
+                }
+            }
+
+            function previewUnhighlight() {
+                if (!previewLayer) return;
+                if (previewLayer.setStyle && previewLayerId) {
+                    previewLayer.setStyle(styles[previewLayerId]);
+                }
+                if (previewLayer.getTooltip && previewLayer.getTooltip()) {
+                    previewLayer.closeTooltip();
+                }
+                previewLayer = null;
+                previewLayerId = null;
+            }
+
+            function updateClearBtn() {
+                if (input.value.length > 0) {
+                    clearBtn.classList.add('visible');
+                    input.classList.add('expanded');
+                } else {
+                    clearBtn.classList.remove('visible');
+                }
+            }
+
+            input.addEventListener('focus', () => input.classList.add('expanded'));
+            input.addEventListener('blur', () => {
+                if (input.value.length === 0) {
+                    input.classList.remove('expanded');
+                }
+            });
+
+            function clearResults() {
+                previewUnhighlight();
+                results.innerHTML = '';
+                results.classList.remove('open');
+                activeIndex = -1;
+                currentResults = [];
+            }
+
+            function showResults(items) {
+                results.innerHTML = '';
+                activeIndex = -1;
+                currentResults = items;
+                if (items.length === 0) {
+                    if (input.value.trim().length >= 2) {
+                        results.innerHTML = '<div class="search-no-results">Aucun resultat</div>';
+                        results.classList.add('open');
+                    } else {
+                        results.classList.remove('open');
+                    }
+                    return;
+                }
+                items.forEach((item, idx) => {
+                    const div = L.DomUtil.create('div', 'search-result-item', results);
+                    const color = styles[item.layerId].fillColor || styles[item.layerId].color;
+                    div.innerHTML = `<div class="search-result-title"><span class="search-result-layer" style="background:${color}"></span>${escapeHtml(item.title)}</div>`
+                        + `<div class="search-result-meta">${escapeHtml(item.meta)}</div>`;
+                    div.addEventListener('click', () => selectResult(item));
+                    div.addEventListener('mouseenter', () => {
+                        setActive(idx);
+                        previewHighlight(item);
+                    });
+                    div.addEventListener('mouseleave', () => previewUnhighlight());
+                });
+                results.classList.add('open');
+            }
+
+            function setActive(idx) {
+                const items = results.querySelectorAll('.search-result-item');
+                for (const el of items) el.classList.remove('active');
+                activeIndex = idx;
+                if (idx >= 0 && idx < items.length) {
+                    items[idx].classList.add('active');
+                    items[idx].scrollIntoView({ block: 'nearest' });
+                }
+            }
+
+            function selectResult(item) {
+                trackEvent('event/search', 'Search');
+                clearResults();
+                input.value = item.title;
+                updateClearBtn();
+
+                ensureLayerVisible(item.layerId);
+
+                if (item.layer.getBounds) {
+                    map.fitBounds(item.layer.getBounds(), { padding: [50, 50], maxZoom: 16 });
+                } else if (item.layer.getLatLng) {
+                    map.setView(item.layer.getLatLng(), 16);
+                }
+
+                const builder = detailBuilders[item.layerId];
+                if (builder) {
+                    setSelectedFeatureInfo({ layerId: item.layerId, featureIndex: findFeatureIndex(item.layerId, item.layer) });
+                    showDetail(builder(item.layer.feature.properties));
+                    updateHash();
+                }
+
+                if (item.layer.setStyle) {
+                    const origStyle = styles[item.layerId];
+                    item.layer.setStyle({ weight: 4, fillOpacity: 0.6 });
+                    setTimeout(() => item.layer.setStyle(origStyle), 2000);
+                }
+
+                input.blur();
+            }
+
+            clearBtn.addEventListener('click', () => {
+                input.value = '';
+                clearResults();
+                updateClearBtn();
+                input.focus();
+            });
+
+            let debounceTimer;
+            input.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                updateClearBtn();
+                const query = input.value.trim().toLowerCase();
+                if (query.length < 2) {
+                    clearResults();
+                    return;
+                }
+                debounceTimer = setTimeout(() => {
+                    const terms = query.split(/\s+/);
+                    const matches = searchIndex.filter(entry =>
+                        terms.every(term =>
+                            entry.searchText.includes(term) || entry.title.toLowerCase().includes(term)
+                        )
+                    ).slice(0, 20);
+                    showResults(matches);
+                }, 150);
+            });
+
+            input.addEventListener('keydown', e => {
+                const items = results.querySelectorAll('.search-result-item');
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setActive(Math.min(activeIndex + 1, items.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setActive(Math.max(activeIndex - 1, 0));
+                } else if (e.key === 'Enter' && activeIndex >= 0) {
+                    e.preventDefault();
+                    if (currentResults[activeIndex]) {
+                        selectResult(currentResults[activeIndex]);
+                    }
+                } else if (e.key === 'Escape') {
+                    clearResults();
+                    input.blur();
+                }
+            });
+
+            map.on('click', () => clearResults());
+
+            return container;
+        }
+    });
+
+    return SearchControl;
+}
+
+// --- Bottom Bar Control ---
+
+export function createBottomBarControl({
+    map, layersDrawer, toggleHelpOverlay, hideDetail, resetToDefaults, fitBassinBounds,
+    SearchControl
+}) {
+    const BottomBarControl = L.Control.extend({
+        options: { position: 'bottomleft' },
+        onAdd: function (map) {
+            const container = L.DomUtil.create('div', 'bottom-pickers-bar');
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+
+            const layersBtn = L.DomUtil.create('button', 'layers-toggle-btn', container);
+            layersBtn.type = 'button';
+            layersBtn.title = 'Couches';
+            layersBtn.setAttribute('aria-label', 'Couches');
+            layersBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
+            layersBtn.addEventListener('click', () => {
+                trackEvent('event/drawer', 'Layers drawer');
+                layersDrawer.toggle();
+            });
+            layersDrawer._toggleBtn = layersBtn;
+
+            const sc = new SearchControl();
+            sc._map = map;
+            container.appendChild(sc.onAdd(map));
+
+            const zoomBar = L.DomUtil.create('div', 'leaflet-bar leaflet-control-zoom unified-zoom', container);
+
+            const zoomIn = L.DomUtil.create('a', 'leaflet-control-zoom-in', zoomBar);
+            zoomIn.href = '#';
+            zoomIn.title = 'Zoom avant';
+            zoomIn.setAttribute('role', 'button');
+            zoomIn.setAttribute('aria-label', 'Zoom avant');
+            zoomIn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>';
+
+            const fullExtent = L.DomUtil.create('a', 'leaflet-control-full-extent', zoomBar);
+            fullExtent.href = '#';
+            fullExtent.title = 'Vue d\'ensemble';
+            fullExtent.setAttribute('role', 'button');
+            fullExtent.setAttribute('aria-label', 'Vue d\'ensemble');
+            fullExtent.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+
+            const resetView = L.DomUtil.create('a', 'leaflet-control-reset-view', zoomBar);
+            resetView.href = '#';
+            resetView.title = 'R\u00e9initialiser la vue';
+            resetView.setAttribute('role', 'button');
+            resetView.setAttribute('aria-label', 'R\u00e9initialiser la vue');
+            resetView.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
+
+            const zoomOut = L.DomUtil.create('a', 'leaflet-control-zoom-out', zoomBar);
+            zoomOut.href = '#';
+            zoomOut.title = 'Zoom arri\u00e8re';
+            zoomOut.setAttribute('role', 'button');
+            zoomOut.setAttribute('aria-label', 'Zoom arri\u00e8re');
+            zoomOut.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>';
+
+            L.DomEvent.on(zoomIn, 'click', e => {
+                L.DomEvent.preventDefault(e);
+                trackEvent('event/zoom/in', 'Zoom in');
+                map.zoomIn();
+            });
+            L.DomEvent.on(fullExtent, 'click', e => {
+                L.DomEvent.preventDefault(e);
+                trackEvent('event/view/full-extent', 'Full extent');
+                hideDetail();
+                fitBassinBounds(map);
+            });
+            L.DomEvent.on(resetView, 'click', e => {
+                L.DomEvent.preventDefault(e);
+                trackEvent('event/view/reset', 'Reset view');
+                resetToDefaults();
+            });
+            L.DomEvent.on(zoomOut, 'click', e => {
+                L.DomEvent.preventDefault(e);
+                trackEvent('event/zoom/out', 'Zoom out');
+                map.zoomOut();
+            });
+
+            const helpBtn = L.DomUtil.create('button', 'help-toggle-btn', container);
+            helpBtn.type = 'button';
+            helpBtn.title = 'Raccourcis clavier';
+            helpBtn.setAttribute('aria-label', 'Raccourcis clavier');
+            helpBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+            helpBtn.addEventListener('click', () => {
+                trackEvent('event/help', 'Help overlay');
+                toggleHelpOverlay();
+            });
+
+            return container;
+        }
+    });
+
+    return BottomBarControl;
+}
