@@ -11,6 +11,7 @@ import { crossLinkHandlers, buildCommuneIndex } from './cross-links.js';
 const app = new MapApp({
     map: { center: [50.35, 2.8], zoom: 10, elementId: 'map', zoomSnap: 0.5 },
     title: {
+        icon: 'favicon.svg',
         heading: 'Bassin Minier du Nord-Pas de Calais',
         subtitle: 'Patrimoine mondial de l\'UNESCO \u2014 Paysage culturel \u00e9volutif vivant, inscrit en 2012'
     },

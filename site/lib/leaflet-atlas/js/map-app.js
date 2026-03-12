@@ -80,8 +80,9 @@ export class MapApp {
             options: { position: 'topleft' },
             onAdd: function () {
                 const div = L.DomUtil.create('div', 'title-overlay');
-                div.innerHTML = `<h1>${cfg.heading || ''}</h1>` +
-                    (cfg.subtitle ? `<p>${cfg.subtitle}</p>` : '');
+                div.innerHTML = `<div class="title-text"><h1>${cfg.heading || ''}</h1>` +
+                    (cfg.subtitle ? `<p>${cfg.subtitle}</p>` : '') + `</div>` +
+                    (cfg.icon ? `<img src="${cfg.icon}" alt="" class="title-icon">` : '');
                 L.DomEvent.disableClickPropagation(div);
                 return div;
             }
