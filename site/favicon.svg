@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <!-- Mine headframe (chevalement) - symbol of the Bassin Minier -->
-  <rect width="64" height="64" rx="8" fill="#2d5016"/>
+  <rect width="64" height="64" rx="8" fill="#4a90d9"/>
   <!-- Terril silhouette -->
-  <polygon points="0,58 20,34 40,58" fill="#3a6b1e"/>
-  <polygon points="24,58 48,28 64,58" fill="#3a6b1e"/>
+  <polygon points="0,58 20,34 40,58" fill="#8a8a8a"/>
+  <polygon points="24,58 48,28 64,58" fill="#8a8a8a"/>
   <!-- Ground -->
-  <rect x="0" y="56" width="64" height="8" fill="#1a3009"/>
+  <rect x="0" y="56" width="64" height="8" fill="#5a5a5a"/>
   <!-- Headframe A-frame -->
   <line x1="22" y1="56" x2="32" y2="12" stroke="#f0e6d3" stroke-width="3" stroke-linecap="round"/>
   <line x1="42" y1="56" x2="32" y2="12" stroke="#f0e6d3" stroke-width="3" stroke-linecap="round"/>
