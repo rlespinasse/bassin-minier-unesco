@@ -1,7 +1,7 @@
 // --- Detail panel content builders (project-specific) ---
 
 import { dataGouvSources } from './config.js';
-import { communeLink, communeLinks, epciLink, deptLink, terrilLinks, elementLink, mhRows, deptNameFromInsee } from './helpers.js';
+import { communeLink, communeLinks, epciLink, deptLink, terrilLinks, elementLink, mhRows } from './helpers.js';
 const { rawHtml, normalizeText } = LeafletAtlas;
 
 export function createDetailBuilders(helpers) {
