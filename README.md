@@ -38,6 +38,10 @@ Ouvrir <http://localhost:8000> dans un navigateur.
 - [Raccourcis clavier](docs/reference/raccourcis-clavier.md)
 - [Technologies](docs/reference/technologies.md)
 
+## Contribuer
+
+Les contributions sont les bienvenues ! Consultez le guide [CONTRIBUTING.md](CONTRIBUTING.md) pour commencer.
+
 ## Licence
 
-Les données sont mises à disposition sous [Licence Ouverte ETALAB v2.0](https://www.etalab.gouv.fr/licence-ouverte-open-licence/).
+Le code source est sous [licence MIT](LICENSE.md). Les données sont mises à disposition sous [Licence Ouverte ETALAB v2.0](https://www.etalab.gouv.fr/licence-ouverte-open-licence/).
