@@ -9,6 +9,8 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+from utils import round_coords
+
 OUTPUT_DIR = Path(__file__).parent.parent / "site" / "data"
 
 # Data sources: each has a URL, optional subdirectory, and shapefile configurations
@@ -171,13 +173,6 @@ def download_and_extract(url, dest_dir):
         zf.extractall(dest_dir)
     os.remove(zip_path)
 
-
-def round_coords(geojson_dict, precision):
-    """Round coordinates in a GeoJSON dict to reduce file size."""
-    import re
-    raw = json.dumps(geojson_dict)
-    rounded = re.sub(r'-?\d+\.\d{7,}', lambda m: str(round(float(m.group()), precision)), raw)
-    return json.loads(rounded)
 
 
 def convert_shapefile(data_dir, source_name, config):

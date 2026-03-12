@@ -3,9 +3,10 @@
 
 import geopandas as gpd
 import json
-import re
 import urllib.request
 from pathlib import Path
+
+from utils import round_coords
 
 OUTPUT_DIR = Path(__file__).parent.parent / "site" / "data"
 
@@ -178,12 +179,6 @@ WFS_SOURCES = [
 SIMPLIFY_TOLERANCE = 0.0001  # ~10m in degrees
 COORD_PRECISION = 6
 
-
-def round_coords(geojson_dict, precision):
-    """Round coordinates in a GeoJSON dict to reduce file size."""
-    raw = json.dumps(geojson_dict)
-    rounded = re.sub(r'-?\d+\.\d{7,}', lambda m: str(round(float(m.group()), precision)), raw)
-    return json.loads(rounded)
 
 
 def convert_wfs(config):

@@ -10,7 +10,8 @@ Idempotent: skips enrichments if source files are already deleted.
 
 import json
 import os
-import urllib.request
+
+from utils import fetch_json
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'site', 'data')
 
@@ -150,12 +151,6 @@ def enrich_cites_minieres():
 API_BASE = 'https://geo.api.gouv.fr'
 DEPARTMENTS = ['59', '62']
 
-
-def fetch_json(url):
-    """Fetch JSON from a URL."""
-    req = urllib.request.Request(url, headers={'User-Agent': 'bassin-minier-unesco/1.0'})
-    with urllib.request.urlopen(req) as response:
-        return json.loads(response.read().decode('utf-8'))
 
 
 def enrich_communes_epci():
