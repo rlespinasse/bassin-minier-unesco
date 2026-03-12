@@ -15,6 +15,7 @@
     --color-surface-subtle: #f8f8f8;
     --color-toggle-active: #e57373;
     --color-toggle-inactive: #81c784;
+    --color-toggle-partial: #ffb74d;
 
     --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.15);
     --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -509,6 +510,11 @@ main {
 .layer-toggle-btn.inactive {
     color: var(--color-toggle-inactive);
     border: 1.5px solid var(--color-toggle-inactive);
+}
+
+.layer-toggle-btn.partial {
+    color: var(--color-toggle-partial);
+    border: 1.5px solid var(--color-toggle-partial);
 }
 
 /* Legend swatch */

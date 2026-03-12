@@ -106,9 +106,10 @@
      * @param {boolean} active - Whether the toggle should appear active
      * @param {string} scope - Label for the title (e.g. 'la couche', 'le groupe')
      */
-    function setToggleState(btn, active, scope) {
-        btn.classList.toggle('active', active);
+    function setToggleState(btn, active, scope, partial) {
+        btn.classList.toggle('active', active && !partial);
         btn.classList.toggle('inactive', !active);
+        btn.classList.toggle('partial', !!partial);
         btn.textContent = active ? '\u2212' : '+';
         btn.title = `${active ? 'Masquer' : 'Afficher'} ${scope}`;
     }
@@ -300,18 +301,18 @@
 
     // Pattern texture definitions per layer (excluded: bassin-minier, communes-mbm, puits-de-mines)
     const layerPatterns = {
-        'batis':                  { type: 'crosshatch', size: 8,  strokeWidth: 1.5 },
-        'cavaliers':              { type: 'diagonal',   size: 8,  strokeWidth: 2 },
-        'cites-minieres':         { type: 'dots',       size: 8,  radius: 1.5 },
-        'espace-neonaturel':      { type: 'circles',    size: 12, radius: 4, strokeWidth: 1 },
-        'terrils':                { type: 'stipple',    size: 10, radius: 1 },
-        'bien-inscrit':           { type: 'horizontal', size: 6,  strokeWidth: 1.5 },
-        'zone-tampon':            { type: 'diagonal',   size: 10, strokeWidth: 1 },
-        'zt-cavaliers':           { type: 'diagonal',   size: 10, strokeWidth: 1 },
-        'zt-cites-minieres':      { type: 'dots',       size: 10, radius: 1 },
-        'zt-espaces-neonaturels': { type: 'circles',    size: 14, radius: 4, strokeWidth: 0.8 },
-        'zt-terrils':             { type: 'stipple',    size: 12, radius: 0.8 },
-        'zt-parvis-agricoles':    { type: 'diagonal',   size: 12, strokeWidth: 1 },
+        'batis': { type: 'crosshatch', size: 8, strokeWidth: 1.5 },
+        'cavaliers': { type: 'diagonal', size: 8, strokeWidth: 2 },
+        'cites-minieres': { type: 'dots', size: 8, radius: 1.5 },
+        'espace-neonaturel': { type: 'circles', size: 12, radius: 4, strokeWidth: 1 },
+        'terrils': { type: 'stipple', size: 10, radius: 1 },
+        'bien-inscrit': { type: 'horizontal', size: 6, strokeWidth: 1.5 },
+        'zone-tampon': { type: 'diagonal', size: 10, strokeWidth: 1 },
+        'zt-cavaliers': { type: 'diagonal', size: 10, strokeWidth: 1 },
+        'zt-cites-minieres': { type: 'dots', size: 10, radius: 1 },
+        'zt-espaces-neonaturels': { type: 'circles', size: 14, radius: 4, strokeWidth: 0.8 },
+        'zt-terrils': { type: 'stipple', size: 12, radius: 0.8 },
+        'zt-parvis-agricoles': { type: 'diagonal', size: 12, strokeWidth: 1 },
     };
 
     function buildPatternContent(parent, cfg, color) {
@@ -1424,10 +1425,13 @@
             const groupSpan = L.DomUtil.create('span', 'drawer-group-label', groupHeader);
             groupSpan.textContent = isContext ? groupLabel : ` ${groupLabel}`;
 
-            const someActive = layerDefs.some(d => d.active !== false);
+            const activeCount = layerDefs.filter(d => d.active !== false).length;
+            const allActive = activeCount === layerDefs.length;
+            const someActive = activeCount > 0;
+            const isPartial = someActive && !allActive;
             const groupToggleBtn = L.DomUtil.create('button', 'layer-toggle-btn' + (isContext ? '' : ' group-toggle-btn'), groupHeader);
             groupToggleBtn.type = 'button';
-            setToggleState(groupToggleBtn, someActive, 'le groupe');
+            setToggleState(groupToggleBtn, someActive, 'le groupe', isPartial);
 
             const groupList = L.DomUtil.create('div', 'drawer-group-list', container);
             const layerToggles = [];
@@ -1438,8 +1442,11 @@
             }
 
             function syncGroupToggle() {
-                const anyActive = layerToggles.some(lt => lt.toggleBtn.classList.contains('active'));
-                setToggleState(groupToggleBtn, anyActive, 'le groupe');
+                const activeCount = layerToggles.filter(lt => lt.toggleBtn.classList.contains('active')).length;
+                const allActive = activeCount === layerToggles.length;
+                const anyActive = activeCount > 0;
+                const isPartial = anyActive && !allActive;
+                setToggleState(groupToggleBtn, anyActive, 'le groupe', isPartial);
             }
 
             this._groupSyncs.push({ layerIds: layerDefs.map(d => d.id), sync: syncGroupToggle });
@@ -1544,7 +1551,7 @@
                     }
                 }
                 self._updateToggleIndicator();
-                    updateHash();
+                updateHash();
             });
 
             return toggleBtn;
