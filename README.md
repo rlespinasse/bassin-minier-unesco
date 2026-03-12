@@ -18,22 +18,26 @@ Ouvrir <http://localhost:8000> dans un navigateur.
 ### Tutoriels
 
 - [Découvrir la carte interactive](docs/tutorials/decouvrir-la-carte.md)
+- [Ajouter une nouvelle couche de données](docs/tutorials/ajouter-une-couche.md)
 
 ### Guides pratiques
 
 - [Installation](docs/how-to/installation.md)
 - [Générer les données](docs/how-to/generer-les-donnees.md)
+- [Mettre à jour les données](docs/how-to/mettre-a-jour-les-donnees.md)
 - [Développement local](docs/how-to/developpement-local.md)
 - [Déploiement](docs/how-to/deploiement.md)
 
 ### Explications
 
 - [Architecture du projet](docs/explanation/architecture.md)
+- [Pipeline de données](docs/explanation/pipeline-de-donnees.md)
 - [Sources de données](docs/explanation/sources-de-donnees.md)
 
 ### Référence
 
 - [Couches cartographiques](docs/reference/couches-cartographiques.md)
+- [Structure des fichiers GeoJSON](docs/reference/structure-geojson.md)
 - [Commandes just](docs/reference/commandes-just.md)
 - [Raccourcis clavier](docs/reference/raccourcis-clavier.md)
 - [Technologies](docs/reference/technologies.md)
