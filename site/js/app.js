@@ -1458,12 +1458,14 @@
                     if (nowActive && isLayerActive) {
                         setToggleState(lt.toggleBtn, false, 'la couche');
                         if (lt.def._leafletLayer) self._map.removeLayer(lt.def._leafletLayer);
+                        if (lt.def._clickLayer) self._map.removeLayer(lt.def._clickLayer);
                         if (isContext && lt.def.id === 'bassin-minier' && bassinMask) {
                             self._map.removeLayer(bassinMask);
                         }
                     } else if (!nowActive && !isLayerActive) {
                         setToggleState(lt.toggleBtn, true, 'la couche');
                         if (lt.def._leafletLayer) lt.def._leafletLayer.addTo(self._map);
+                        if (lt.def._clickLayer) lt.def._clickLayer.addTo(self._map);
                         if (isContext && lt.def.id === 'bassin-minier' && bassinMask) {
                             bassinMask.addTo(self._map);
                         }
@@ -1530,11 +1532,13 @@
                 setToggleState(toggleBtn, !nowActive, 'la couche');
                 if (nowActive) {
                     if (def._leafletLayer) self._map.removeLayer(def._leafletLayer);
+                    if (def._clickLayer) self._map.removeLayer(def._clickLayer);
                     if (isContext && def.id === 'bassin-minier' && bassinMask) {
                         self._map.removeLayer(bassinMask);
                     }
                 } else {
                     if (def._leafletLayer) def._leafletLayer.addTo(self._map);
+                    if (def._clickLayer) def._clickLayer.addTo(self._map);
                     if (isContext && def.id === 'bassin-minier' && bassinMask) {
                         bassinMask.addTo(self._map);
                     }
@@ -1958,6 +1962,7 @@
         if (!def || !def._leafletLayer) return;
         if (!map.hasLayer(def._leafletLayer)) {
             def._leafletLayer.addTo(map);
+            if (def._clickLayer) def._clickLayer.addTo(map);
             if (layerId === 'bassin-minier' && bassinMask) bassinMask.addTo(map);
             layersDrawer.syncLayerState(layerId, true);
         }
@@ -1984,6 +1989,14 @@
     const largeFeaturesPane = map.createPane('largeFeaturesPane');
     largeFeaturesPane.style.zIndex = 370;
 
+    // Border click panes for context layers (smallest features on top for click priority)
+    const deptBorderPane = map.createPane('deptBorderPane');
+    deptBorderPane.style.zIndex = 373;
+    const epciBorderPane = map.createPane('epciBorderPane');
+    epciBorderPane.style.zIndex = 375;
+    const communeBorderPane = map.createPane('communeBorderPane');
+    communeBorderPane.style.zIndex = 377;
+
     const mediumFeaturesPane = map.createPane('mediumFeaturesPane');
     mediumFeaturesPane.style.zIndex = 380;
 
@@ -2009,6 +2022,13 @@
         'batis': 'smallFeaturesPane',
     };
 
+    // Layers that get invisible thick-stroke click borders in dedicated panes
+    const borderClickLayers = {
+        'departements': 'deptBorderPane',
+        'epci': 'epciBorderPane',
+        'communes-mbm': 'communeBorderPane'
+    };
+
     // Build an inverted polygon (world exterior with hole cut for the given coordinates)
     function createMaskLayer(coordinates) {
         const world = [
@@ -2026,6 +2046,7 @@
     }
 
     let hoveredLayer = null;
+    let hoveredLayerId = null;
     const communeIndex = new Map();
     let reverseLinks = null;
 
@@ -2131,9 +2152,11 @@
             const isActive = map.hasLayer(def._leafletLayer);
             if (shouldBeActive && !isActive) {
                 def._leafletLayer.addTo(map);
+                if (def._clickLayer) def._clickLayer.addTo(map);
                 if (def.id === 'bassin-minier' && bassinMask) bassinMask.addTo(map);
             } else if (!shouldBeActive && isActive) {
                 map.removeLayer(def._leafletLayer);
+                if (def._clickLayer) map.removeLayer(def._clickLayer);
                 if (def.id === 'bassin-minier' && bassinMask) map.removeLayer(bassinMask);
             }
             layersDrawer.syncLayerState(def.id, shouldBeActive);
@@ -2211,9 +2234,11 @@
                     const isActive = map.hasLayer(def._leafletLayer);
                     if (shouldBeActive && !isActive) {
                         def._leafletLayer.addTo(map);
+                        if (def._clickLayer) def._clickLayer.addTo(map);
                         if (def.id === 'bassin-minier' && bassinMask) bassinMask.addTo(map);
                     } else if (!shouldBeActive && isActive) {
                         map.removeLayer(def._leafletLayer);
+                        if (def._clickLayer) map.removeLayer(def._clickLayer);
                         if (def.id === 'bassin-minier' && bassinMask) map.removeLayer(bassinMask);
                     }
                     layersDrawer.syncLayerState(def.id, shouldBeActive);
@@ -2304,59 +2329,69 @@
             })
             .then(geojson => {
                 const paneOpt = layerPanes[def.id] ? { pane: layerPanes[def.id] } : {};
+                const hasBorderClick = !!borderClickLayers[def.id];
                 const layerOpts = {
+                    ...(hasBorderClick ? { interactive: false } : {}),
                     style: () => ({
                         ...styles[def.id],
                         ...paneOpt,
                         ...(layerPatterns[def.id] ? { className: `layer-${def.id}` } : {})
                     }),
                     onEachFeature: (feature, layer) => {
-                        const builder = detailBuilders[def.id];
-                        if (builder) {
-                            layer.on('click', e => {
-                                L.DomEvent.stopPropagation(e);
-                                // Track selected feature for URL sharing
-                                const idx = geojson.features.indexOf(feature);
-                                trackEvent('event/feature', 'Feature click');
-                                selectedFeatureInfo = { layerId: def.id, featureIndex: idx };
-                                showDetail(builder(feature.properties));
-                                updateHash();
-                            });
-                        }
 
-                        // Hover tooltip
-                        const ttFn = tooltipText[def.id];
-                        if (ttFn) {
-                            const text = ttFn(feature.properties);
-                            if (text) {
-                                layer.bindTooltip(text, {
-                                    className: 'feature-tooltip',
-                                    sticky: true,
-                                    direction: 'top',
-                                    offset: [0, -10]
+                        if (!hasBorderClick) {
+                            const builder = detailBuilders[def.id];
+                            if (builder) {
+                                layer.on('click', e => {
+                                    L.DomEvent.stopPropagation(e);
+                                    const idx = geojson.features.indexOf(feature);
+                                    trackEvent('event/feature', 'Feature click');
+                                    selectedFeatureInfo = { layerId: def.id, featureIndex: idx };
+                                    showDetail(builder(feature.properties));
+                                    updateHash();
                                 });
                             }
                         }
 
-                        // Hover highlight
-                        layer.on('mouseover', () => {
-                            if (hoveredLayer && hoveredLayer !== layer && hoveredLayer.setStyle) {
-                                hoveredLayer.setStyle(styles[def.id]);
+                        // Hover tooltip (skip for border-click layers — tooltip is on click layer)
+                        if (!hasBorderClick) {
+                            const ttFn = tooltipText[def.id];
+                            if (ttFn) {
+                                const text = ttFn(feature.properties);
+                                if (text) {
+                                    layer.bindTooltip(text, {
+                                        className: 'feature-tooltip',
+                                        sticky: true,
+                                        direction: 'top',
+                                        offset: [0, -10]
+                                    });
+                                }
                             }
-                            hoveredLayer = layer;
-                            if (layer.setStyle) {
-                                layer.setStyle(getHoverStyle(def.id));
-                            }
-                            if (layer.bringToFront && def.id !== 'bassin-minier' && def.id !== 'communes-mbm' && def.id !== 'epci' && def.id !== 'departements') {
-                                layer.bringToFront();
-                            }
-                        });
-                        layer.on('mouseout', () => {
-                            if (layer.setStyle) {
-                                layer.setStyle(styles[def.id]);
-                            }
-                            hoveredLayer = null;
-                        });
+                        }
+
+                        // Hover highlight (skip for border-click layers — hover is on click layer)
+                        if (!hasBorderClick) {
+                            layer.on('mouseover', () => {
+                                if (hoveredLayer && hoveredLayer !== layer && hoveredLayer.setStyle) {
+                                    hoveredLayer.setStyle(styles[hoveredLayerId || def.id]);
+                                }
+                                hoveredLayer = layer;
+                                hoveredLayerId = def.id;
+                                if (layer.setStyle) {
+                                    layer.setStyle(getHoverStyle(def.id));
+                                }
+                                if (layer.bringToFront && def.id !== 'bassin-minier' && def.id !== 'communes-mbm' && def.id !== 'epci' && def.id !== 'departements') {
+                                    layer.bringToFront();
+                                }
+                            });
+                            layer.on('mouseout', () => {
+                                if (layer.setStyle) {
+                                    layer.setStyle(styles[def.id]);
+                                }
+                                hoveredLayer = null;
+                                hoveredLayerId = null;
+                            });
+                        }
                     }
                 };
                 if (styles[def.id] && styles[def.id].radius) {
@@ -2368,6 +2403,63 @@
                 const featureCount = geojson.features ? geojson.features.length : 0;
                 def._featureCount = featureCount;
 
+                // Create invisible border click layer for context layers
+                if (borderClickLayers[def.id]) {
+                    const clickPane = borderClickLayers[def.id];
+                    const clickLayer = L.geoJSON(geojson, {
+                        style: () => ({
+                            weight: 12,
+                            color: 'transparent',
+                            fill: false,
+                            pane: clickPane
+                        }),
+                        onEachFeature: (feature, lyr) => {
+                            const builder = detailBuilders[def.id];
+                            if (builder) {
+                                lyr.on('click', e => {
+                                    L.DomEvent.stopPropagation(e);
+                                    const idx = geojson.features.indexOf(feature);
+                                    trackEvent('event/feature', 'Feature click');
+                                    selectedFeatureInfo = { layerId: def.id, featureIndex: idx };
+                                    showDetail(builder(feature.properties));
+                                    updateHash();
+                                });
+                            }
+                            const ttFn = tooltipText[def.id];
+                            if (ttFn) {
+                                const text = ttFn(feature.properties);
+                                if (text) lyr.bindTooltip(text, {
+                                    className: 'feature-tooltip',
+                                    sticky: true, direction: 'top', offset: [0, -10]
+                                });
+                            }
+                            // Hover: apply highlight style to corresponding visual layer feature
+                            lyr.on('mouseover', () => {
+                                const idx = geojson.features.indexOf(feature);
+                                const visualFeature = def._leafletLayer.getLayers()[idx];
+                                if (hoveredLayer && hoveredLayer !== visualFeature && hoveredLayer.setStyle) {
+                                    hoveredLayer.setStyle(styles[hoveredLayerId || def.id]);
+                                }
+                                hoveredLayer = visualFeature;
+                                hoveredLayerId = def.id;
+                                if (visualFeature && visualFeature.setStyle) {
+                                    visualFeature.setStyle(getHoverStyle(def.id));
+                                }
+                            });
+                            lyr.on('mouseout', () => {
+                                const idx = geojson.features.indexOf(feature);
+                                const visualFeature = def._leafletLayer.getLayers()[idx];
+                                if (visualFeature && visualFeature.setStyle) {
+                                    visualFeature.setStyle(styles[def.id]);
+                                }
+                                hoveredLayer = null;
+                                hoveredLayerId = null;
+                            });
+                        }
+                    });
+                    def._clickLayer = clickLayer;
+                }
+
                 // Create inverted mask for bassin-minier
                 if (def.id === 'bassin-minier' && geojson.features && geojson.features[0]) {
                     bassinMask = createMaskLayer(geojson.features[0].geometry.coordinates);
@@ -2378,6 +2470,7 @@
 
                 if (def.active !== false) {
                     layer.addTo(map);
+                    if (def._clickLayer) def._clickLayer.addTo(map);
                 }
                 boundsGroup.addLayer(layer);
 
