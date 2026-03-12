@@ -3,8 +3,9 @@
 import { MapApp } from '../lib/leaflet-atlas/js/index.js';
 import {
     styles, layerPatterns, tooltipText, layerGroups, contextLayers,
-    layerPanes, borderClickLayers, searchableProps
+    layerPanes, borderClickLayers, searchableProps, dataGouvSources
 } from './config.js';
+import { buildLegalPages } from './legal.js';
 import { createDetailBuilders } from './detail-builders.js';
 import { crossLinkHandlers, buildCommuneIndex } from './cross-links.js';
 
@@ -70,6 +71,7 @@ const app = new MapApp({
         mediumFeaturesPane: { zIndex: 380 },
         smallFeaturesPane: { zIndex: 390 },
     },
+    legalPages: buildLegalPages(dataGouvSources),
     analytics: { provider: 'goatcounter', basePath: '/bassin-minier-unesco/' },
     reverseLinksUrl: 'data/reverse-links.json',
     onReady: app => {

@@ -23,6 +23,7 @@ export class MapApp {
         this._loadedCount = 0;
         this._searchInput = null;
         this._helpOverlay = null;
+        this._legalOverlay = null;
         this._baseLayers = {};
         this._baseLayerThumbnails = {};
         this._contextLayerIds = new Set((config.contextLayers || []).map(d => d.id));
@@ -42,6 +43,7 @@ export class MapApp {
         this._initControls();
         this._shortcuts = this._buildShortcuts();
         this._initHelpOverlay();
+        this._initLegalOverlay();
         this._initKeyboardShortcuts();
         this._initResizeHandle();
         this._loadData();
@@ -211,6 +213,7 @@ export class MapApp {
             map: this._map,
             layersDrawer: this._layersDrawer,
             toggleHelpOverlay: () => this._toggleHelpOverlay(),
+            toggleLegalOverlay: this._config.legalPages ? () => this._toggleLegalOverlay() : null,
             hideDetail: () => this.hideDetail(),
             resetToDefaults: () => this._resetToDefaults(),
             fitBounds: () => this.fitBounds(),
@@ -299,10 +302,17 @@ export class MapApp {
                 matchRaw: true
             },
             {
+                key: 'l', label: labels.shortcutLegal || 'Mentions légales',
+                action: () => this._toggleLegalOverlay(),
+                event: 'event/shortcut/legal', eventLabel: 'Shortcut legal overlay'
+            },
+            {
                 key: 'Escape', label: labels.shortcutClose || 'Fermer',
                 displayKey: 'Echap',
                 action: () => {
-                    if (this._helpOverlay && this._helpOverlay.classList.contains('open')) {
+                    if (this._legalOverlay && this._legalOverlay.classList.contains('open')) {
+                        this._legalOverlay.classList.remove('open');
+                    } else if (this._helpOverlay && this._helpOverlay.classList.contains('open')) {
                         this._helpOverlay.classList.remove('open');
                     } else if (this._layersDrawer && this._layersDrawer.isOpen()) {
                         this._layersDrawer.close();
@@ -363,7 +373,74 @@ export class MapApp {
 
     _toggleHelpOverlay() {
         if (!this._helpOverlay) return;
+        if (!this._helpOverlay.classList.contains('open') && this._legalOverlay) {
+            this._legalOverlay.classList.remove('open');
+        }
         this._helpOverlay.classList.toggle('open');
+    }
+
+    _initLegalOverlay() {
+        const pages = this._config.legalPages;
+        if (!pages || pages.length === 0) return;
+        const labels = this._config.labels || {};
+
+        const overlay = document.createElement('div');
+        overlay.className = 'legal-overlay';
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) overlay.classList.remove('open');
+        });
+
+        const card = document.createElement('div');
+        card.className = 'legal-card';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'legal-close-btn';
+        closeBtn.type = 'button';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.title = labels.close || 'Fermer';
+        closeBtn.setAttribute('aria-label', labels.closeLegal || 'Fermer les mentions légales');
+        closeBtn.addEventListener('click', () => overlay.classList.remove('open'));
+        card.appendChild(closeBtn);
+
+        const tabBar = document.createElement('div');
+        tabBar.className = 'legal-tabs';
+        card.appendChild(tabBar);
+
+        const contentPanels = [];
+
+        pages.forEach((page, i) => {
+            const tabBtn = document.createElement('button');
+            tabBtn.className = 'legal-tab-btn' + (i === 0 ? ' active' : '');
+            tabBtn.type = 'button';
+            tabBtn.textContent = page.label;
+            tabBar.appendChild(tabBtn);
+
+            const panel = document.createElement('div');
+            panel.className = 'legal-tab-content' + (i === 0 ? ' active' : '');
+            panel.innerHTML = page.content;
+            card.appendChild(panel);
+            contentPanels.push(panel);
+
+            tabBtn.addEventListener('click', () => {
+                tabBar.querySelectorAll('.legal-tab-btn').forEach(b => b.classList.remove('active'));
+                contentPanels.forEach(p => p.classList.remove('active'));
+                tabBtn.classList.add('active');
+                panel.classList.add('active');
+                this._analytics.trackEvent(`event/legal/tab/${page.id}`, `Legal tab ${page.id}`);
+            });
+        });
+
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        this._legalOverlay = overlay;
+    }
+
+    _toggleLegalOverlay() {
+        if (!this._legalOverlay) return;
+        if (!this._legalOverlay.classList.contains('open') && this._helpOverlay) {
+            this._helpOverlay.classList.remove('open');
+        }
+        this._legalOverlay.classList.toggle('open');
     }
 
     _initKeyboardShortcuts() {
