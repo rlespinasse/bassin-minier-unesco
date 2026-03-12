@@ -1,6 +1,6 @@
 // --- Consumer cross-link handlers ---
 
-import { normalizeText } from '../lib/leaflet-atlas/js/index.js';
+const { normalizeText } = LeafletAtlas;
 
 let communeIndex = null;
 

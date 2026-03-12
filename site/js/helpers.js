@@ -1,6 +1,6 @@
 // --- Project-specific helpers ---
 
-import { crossLink, escapeHtml, rawHtml, normalizeText } from '../lib/leaflet-atlas/js/index.js';
+const { crossLink, escapeHtml, rawHtml, normalizeText } = LeafletAtlas;
 
 // --- Cross-link helpers ---
 
