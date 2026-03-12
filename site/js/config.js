@@ -200,11 +200,6 @@ export const contextLayers = [
     { id: 'departements', label: 'D\u00e9partements', file: 'data/departements.geojson', active: false }
 ];
 
-export const allLayerDefs = [
-    ...layerGroups.flatMap(g => g.layers),
-    ...contextLayers
-];
-
 export const layerPanes = {
     'zone-tampon': 'largeFeaturesPane',
     'bien-inscrit': 'largeFeaturesPane',

@@ -14,39 +14,12 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin="">
+    <link rel="stylesheet" href="lib/leaflet-atlas/css/index.css">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/title.css">
-    <link rel="stylesheet" href="css/loading.css">
-    <link rel="stylesheet" href="css/detail.css">
-    <link rel="stylesheet" href="css/layers.css">
-    <link rel="stylesheet" href="css/controls.css">
-    <link rel="stylesheet" href="css/patterns.css">
-    <link rel="stylesheet" href="css/search.css">
-    <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
     <main>
         <div id="map"></div>
-        <div id="loading-overlay" class="loading-overlay">
-            <div class="loading-spinner"></div>
-            <div class="loading-text">Chargement des donnees...</div>
-        </div>
-        <aside id="detail-panel" class="detail-panel">
-            <div class="panel-actions">
-                <button id="detail-back" class="panel-nav-btn" aria-label="Retour" style="display:none">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-                </button>
-                <button id="detail-forward" class="panel-nav-btn" aria-label="Suivant" style="display:none">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </button>
-                <button id="detail-clear-history" class="panel-nav-btn" aria-label="Effacer l'historique" style="display:none">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                </button>
-                <span class="panel-actions-sep" style="display:none"></span>
-                <button id="detail-close" class="panel-close-btn" aria-label="Fermer">&times;</button>
-            </div>
-            <div id="detail-content"></div>
-        </aside>
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"

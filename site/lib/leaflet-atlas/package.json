@@ -1,0 +1,15 @@
+{
+  "name": "leaflet-atlas",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A config-driven Leaflet framework for building interactive GeoJSON map applications",
+  "exports": {
+    ".": "./js/index.js",
+    "./css": "./css/index.css",
+    "./css/*": "./css/*"
+  },
+  "peerDependencies": {
+    "leaflet": "^1.9.0"
+  },
+  "license": "MIT"
+}

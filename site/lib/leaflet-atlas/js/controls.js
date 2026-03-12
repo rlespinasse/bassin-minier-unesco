@@ -1,126 +1,20 @@
 // --- Leaflet UI controls ---
 
-import { styles, layerPatterns } from './config.js';
-import { setToggleState, trackEvent, escapeHtml, getHoverStyle, normalizeText } from './helpers.js';
-
-// --- Pattern helpers ---
-
-export function buildPatternContent(parent, cfg, color) {
-    const NS = 'http://www.w3.org/2000/svg';
-    switch (cfg.type) {
-        case 'diagonal': {
-            const line = document.createElementNS(NS, 'line');
-            line.setAttribute('x1', 0);
-            line.setAttribute('y1', cfg.size);
-            line.setAttribute('x2', cfg.size);
-            line.setAttribute('y2', 0);
-            line.setAttribute('stroke', color);
-            line.setAttribute('stroke-width', cfg.strokeWidth);
-            parent.appendChild(line);
-            break;
-        }
-        case 'crosshatch': {
-            const l1 = document.createElementNS(NS, 'line');
-            l1.setAttribute('x1', 0); l1.setAttribute('y1', cfg.size);
-            l1.setAttribute('x2', cfg.size); l1.setAttribute('y2', 0);
-            l1.setAttribute('stroke', color); l1.setAttribute('stroke-width', cfg.strokeWidth);
-            const l2 = document.createElementNS(NS, 'line');
-            l2.setAttribute('x1', 0); l2.setAttribute('y1', 0);
-            l2.setAttribute('x2', cfg.size); l2.setAttribute('y2', cfg.size);
-            l2.setAttribute('stroke', color); l2.setAttribute('stroke-width', cfg.strokeWidth);
-            parent.appendChild(l1);
-            parent.appendChild(l2);
-            break;
-        }
-        case 'dots': {
-            const c = document.createElementNS(NS, 'circle');
-            c.setAttribute('cx', cfg.size / 2);
-            c.setAttribute('cy', cfg.size / 2);
-            c.setAttribute('r', cfg.radius);
-            c.setAttribute('fill', color);
-            parent.appendChild(c);
-            break;
-        }
-        case 'stipple': {
-            const c1 = document.createElementNS(NS, 'circle');
-            c1.setAttribute('cx', cfg.size * 0.25);
-            c1.setAttribute('cy', cfg.size * 0.25);
-            c1.setAttribute('r', cfg.radius);
-            c1.setAttribute('fill', color);
-            const c2 = document.createElementNS(NS, 'circle');
-            c2.setAttribute('cx', cfg.size * 0.75);
-            c2.setAttribute('cy', cfg.size * 0.7);
-            c2.setAttribute('r', cfg.radius);
-            c2.setAttribute('fill', color);
-            parent.appendChild(c1);
-            parent.appendChild(c2);
-            break;
-        }
-        case 'circles': {
-            const c = document.createElementNS(NS, 'circle');
-            c.setAttribute('cx', cfg.size / 2);
-            c.setAttribute('cy', cfg.size / 2);
-            c.setAttribute('r', cfg.radius);
-            c.setAttribute('fill', 'none');
-            c.setAttribute('stroke', color);
-            c.setAttribute('stroke-width', cfg.strokeWidth);
-            parent.appendChild(c);
-            break;
-        }
-        case 'horizontal': {
-            const line = document.createElementNS(NS, 'line');
-            line.setAttribute('x1', 0);
-            line.setAttribute('y1', cfg.size / 2);
-            line.setAttribute('x2', cfg.size);
-            line.setAttribute('y2', cfg.size / 2);
-            line.setAttribute('stroke', color);
-            line.setAttribute('stroke-width', cfg.strokeWidth);
-            parent.appendChild(line);
-            break;
-        }
-    }
-}
-
-export function createPatternDefs() {
-    const NS = 'http://www.w3.org/2000/svg';
-    const defs = document.createElementNS(NS, 'defs');
-    defs.setAttribute('data-map-patterns', 'true');
-
-    for (const [layerId, cfg] of Object.entries(layerPatterns)) {
-        const style = styles[layerId];
-        if (!style) continue;
-        const color = style.fillColor || style.color;
-        const pat = document.createElementNS(NS, 'pattern');
-        pat.setAttribute('id', `pattern-${layerId}`);
-        pat.setAttribute('patternUnits', 'userSpaceOnUse');
-        pat.setAttribute('width', cfg.size);
-        pat.setAttribute('height', cfg.size);
-        buildPatternContent(pat, cfg, color);
-        defs.appendChild(pat);
-    }
-    return defs;
-}
-
-export function injectPatterns() {
-    const svgs = document.querySelectorAll('.leaflet-overlay-pane svg, .leaflet-pane svg');
-    svgs.forEach(svg => {
-        const existing = svg.querySelector('defs[data-map-patterns]');
-        if (existing) return;
-        svg.insertBefore(createPatternDefs(), svg.firstChild);
-    });
-}
+import { setToggleState, escapeHtml, getHoverStyle } from './helpers.js';
+import { buildPatternContent } from './patterns.js';
 
 // --- Legend swatch ---
 
-export function getLayerGeomType(layerId) {
+export function getLayerGeomType(layerId, styles, geometryTypes) {
+    if (geometryTypes && geometryTypes[layerId]) return geometryTypes[layerId];
     if (styles[layerId] && styles[layerId].radius) return 'point';
-    if (layerId === 'cavaliers' || layerId === 'zt-cavaliers') return 'line';
     return 'polygon';
 }
 
-export function createSwatch(layerId) {
+export function createSwatch(layerId, styles, patterns, geometryTypes) {
     const style = styles[layerId];
-    const geom = getLayerGeomType(layerId);
+    if (!style) return document.createElement('span');
+    const geom = getLayerGeomType(layerId, styles, geometryTypes);
     const color = style.fillColor || style.color;
     const swatch = document.createElement('span');
     swatch.className = 'layer-swatch';
@@ -134,7 +28,7 @@ export function createSwatch(layerId) {
         swatch.style.background = style.dashArray
             ? `repeating-linear-gradient(90deg, ${style.color} 0, ${style.color} 4px, transparent 4px, transparent 7px)`
             : style.color;
-    } else if (layerPatterns[layerId]) {
+    } else if (patterns[layerId]) {
         swatch.classList.add('layer-swatch-polygon');
         const W = 20, H = 12, B = 1.5;
         const NS = 'http://www.w3.org/2000/svg';
@@ -150,7 +44,7 @@ export function createSwatch(layerId) {
         bgRect.setAttribute('fill-opacity', Math.max(style.fillOpacity || 0.3, 0.4));
         svg.appendChild(bgRect);
         const defs = document.createElementNS(NS, 'defs');
-        const cfg = layerPatterns[layerId];
+        const cfg = patterns[layerId];
         const pat = document.createElementNS(NS, 'pattern');
         const patId = `swatch-pattern-${layerId}`;
         pat.setAttribute('id', patId);
@@ -190,8 +84,15 @@ export function createSwatch(layerId) {
 // --- Layers Drawer ---
 
 export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersDef, baseLayerThumbnails, {
-    map, bassinMaskRef, hideDetail, updateHash, allLayerDefs
+    map, maskRef, hideDetail, updateHash, allLayerDefs, trackEvent, maskLayerSourceId, labels
 }) {
+    const _labels = labels || {};
+    const layersLabel = _labels.layers || 'Couches';
+    const basemapLabel = _labels.basemap || 'Fond de carte';
+    const closeLabel = _labels.close || 'Fermer';
+    const layerScope = _labels.layerScope || 'la couche';
+    const groupScope = _labels.groupScope || 'le groupe';
+
     const LayersDrawer = L.Control.extend({
         options: { position: 'topleft' },
         initialize: function (layerGroups, contextLayers, baseLayers, options) {
@@ -215,20 +116,20 @@ export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersD
 
             const header = L.DomUtil.create('div', 'layers-drawer-header', aside);
             const title = L.DomUtil.create('span', 'layers-drawer-title', header);
-            title.textContent = 'Couches';
+            title.textContent = layersLabel;
             const closeBtn = L.DomUtil.create('button', 'panel-close-btn', header);
             closeBtn.innerHTML = '&times;';
-            closeBtn.title = 'Fermer';
-            closeBtn.setAttribute('aria-label', 'Fermer');
+            closeBtn.title = closeLabel;
+            closeBtn.setAttribute('aria-label', closeLabel);
             closeBtn.addEventListener('click', () => self.close());
 
             const tabBar = L.DomUtil.create('div', 'layers-drawer-tabs', aside);
             const tabCouches = L.DomUtil.create('button', 'layers-drawer-tab active', tabBar);
             tabCouches.type = 'button';
-            tabCouches.textContent = 'Couches';
+            tabCouches.textContent = layersLabel;
             const tabFond = L.DomUtil.create('button', 'layers-drawer-tab', tabBar);
             tabFond.type = 'button';
-            tabFond.textContent = 'Fond de carte';
+            tabFond.textContent = basemapLabel;
 
             const contentCouches = L.DomUtil.create('div', 'layers-drawer-tab-content active', aside);
             const contentFond = L.DomUtil.create('div', 'layers-drawer-tab-content', aside);
@@ -309,7 +210,7 @@ export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersD
             const isPartial = someActive && !allActive;
             const groupToggleBtn = L.DomUtil.create('button', 'layer-toggle-btn' + (isContext ? '' : ' group-toggle-btn'), groupHeader);
             groupToggleBtn.type = 'button';
-            setToggleState(groupToggleBtn, someActive, 'le groupe', isPartial);
+            setToggleState(groupToggleBtn, someActive, groupScope, isPartial);
 
             const groupList = L.DomUtil.create('div', 'drawer-group-list', container);
             const layerToggles = [];
@@ -324,7 +225,7 @@ export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersD
                 const allActive = activeCount === layerToggles.length;
                 const anyActive = activeCount > 0;
                 const isPartial = anyActive && !allActive;
-                setToggleState(groupToggleBtn, anyActive, 'le groupe', isPartial);
+                setToggleState(groupToggleBtn, anyActive, groupScope, isPartial);
             }
 
             this._groupSyncs.push({ layerIds: layerDefs.map(d => d.id), sync: syncGroupToggle });
@@ -341,18 +242,18 @@ export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersD
                 for (const lt of layerToggles) {
                     const isLayerActive = lt.toggleBtn.classList.contains('active');
                     if (nowActive && isLayerActive) {
-                        setToggleState(lt.toggleBtn, false, 'la couche');
+                        setToggleState(lt.toggleBtn, false, layerScope);
                         if (lt.def._leafletLayer) self._map.removeLayer(lt.def._leafletLayer);
                         if (lt.def._clickLayer) self._map.removeLayer(lt.def._clickLayer);
-                        if (isContext && lt.def.id === 'bassin-minier' && bassinMaskRef()) {
-                            self._map.removeLayer(bassinMaskRef());
+                        if (isContext && lt.def.id === maskLayerSourceId && maskRef()) {
+                            self._map.removeLayer(maskRef());
                         }
                     } else if (!nowActive && !isLayerActive) {
-                        setToggleState(lt.toggleBtn, true, 'la couche');
+                        setToggleState(lt.toggleBtn, true, layerScope);
                         if (lt.def._leafletLayer) lt.def._leafletLayer.addTo(self._map);
                         if (lt.def._clickLayer) lt.def._clickLayer.addTo(self._map);
-                        if (isContext && lt.def.id === 'bassin-minier' && bassinMaskRef()) {
-                            bassinMaskRef().addTo(self._map);
+                        if (isContext && lt.def.id === maskLayerSourceId && maskRef()) {
+                            maskRef().addTo(self._map);
                         }
                     }
                 }
@@ -389,11 +290,14 @@ export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersD
 
         _buildLayerRow: function (container, def, isContext) {
             const self = this;
+            const styles = self.options._styles;
+            const patterns = self.options._patterns;
+            const geometryTypes = self.options._geometryTypes;
             const row = L.DomUtil.create('div', 'drawer-layer-row', container);
-            const color = styles[def.id].fillColor || styles[def.id].color;
+            const color = styles[def.id] ? (styles[def.id].fillColor || styles[def.id].color) : '#888';
             row.style.setProperty('--layer-color', color);
 
-            row.appendChild(createSwatch(def.id));
+            row.appendChild(createSwatch(def.id, styles, patterns, geometryTypes));
 
             const label = L.DomUtil.create('span', 'drawer-layer-label', row);
             label.textContent = def.label;
@@ -404,7 +308,7 @@ export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersD
             const isActive = def.active !== false;
             const toggleBtn = L.DomUtil.create('button', 'layer-toggle-btn', row);
             toggleBtn.type = 'button';
-            setToggleState(toggleBtn, isActive, 'la couche');
+            setToggleState(toggleBtn, isActive, layerScope);
 
             self._layerToggleBtns[def.id] = toggleBtn;
 
@@ -413,18 +317,18 @@ export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersD
                 e.stopPropagation();
                 const nowActive = toggleBtn.classList.contains('active');
                 trackEvent('event/layer-toggle', 'Layer toggle');
-                setToggleState(toggleBtn, !nowActive, 'la couche');
+                setToggleState(toggleBtn, !nowActive, layerScope);
                 if (nowActive) {
                     if (def._leafletLayer) self._map.removeLayer(def._leafletLayer);
                     if (def._clickLayer) self._map.removeLayer(def._clickLayer);
-                    if (isContext && def.id === 'bassin-minier' && bassinMaskRef()) {
-                        self._map.removeLayer(bassinMaskRef());
+                    if (isContext && def.id === maskLayerSourceId && maskRef()) {
+                        self._map.removeLayer(maskRef());
                     }
                 } else {
                     if (def._leafletLayer) def._leafletLayer.addTo(self._map);
                     if (def._clickLayer) def._clickLayer.addTo(self._map);
-                    if (isContext && def.id === 'bassin-minier' && bassinMaskRef()) {
-                        bassinMaskRef().addTo(self._map);
+                    if (isContext && def.id === maskLayerSourceId && maskRef()) {
+                        maskRef().addTo(self._map);
                     }
                 }
                 self._updateToggleIndicator();
@@ -469,7 +373,7 @@ export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersD
         },
         syncLayerState: function (layerId, active) {
             const btn = this._layerToggleBtns[layerId];
-            if (btn) setToggleState(btn, active, 'la couche');
+            if (btn) setToggleState(btn, active, layerScope);
             for (const gs of this._groupSyncs) {
                 if (gs.layerIds.includes(layerId)) gs.sync();
             }
@@ -497,7 +401,12 @@ export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersD
         }
     });
 
-    return new LayersDrawer(layerGroupsDef, contextLayersDef, baseLayersDef);
+    const drawer = new LayersDrawer(layerGroupsDef, contextLayersDef, baseLayersDef, {
+        _styles: allLayerDefs.reduce((acc, d) => { acc[d.id] = (acc[d.id] || {}); return acc; }, {}),
+        _patterns: {},
+        _geometryTypes: {}
+    });
+    return drawer;
 }
 
 // --- Search Control ---
@@ -505,8 +414,16 @@ export function createLayersDrawer(layerGroupsDef, contextLayersDef, baseLayersD
 export function createSearchControl({
     map, styles, searchIndex, allLayerDefs, detailBuilders,
     ensureLayerVisible, showDetail, updateHash, findFeatureIndex,
-    setSelectedFeatureInfo, searchInputRef
+    setSelectedFeatureInfo, searchInputRef, trackEvent, labels, noBringToFrontLayers
 }) {
+    const _labels = labels || {};
+    const searchPlaceholder = _labels.searchPlaceholder || 'Rechercher un lieu...';
+    const searchLabel = _labels.searchLabel || 'Rechercher';
+    const searchClearTitle = _labels.searchClear || 'Effacer';
+    const searchClearLabel = _labels.searchClearLabel || 'Effacer la recherche';
+    const noResultsText = _labels.noResults || 'Aucun resultat';
+    const noBringToFront = noBringToFrontLayers || new Set();
+
     const SearchControl = L.Control.extend({
         options: { position: 'topleft' },
         onAdd: function () {
@@ -517,15 +434,15 @@ export function createSearchControl({
             const inputWrapper = L.DomUtil.create('div', 'search-input-wrapper', container);
             const input = L.DomUtil.create('input', '', inputWrapper);
             input.type = 'text';
-            input.placeholder = 'Rechercher un lieu...';
-            input.setAttribute('aria-label', 'Rechercher');
+            input.placeholder = searchPlaceholder;
+            input.setAttribute('aria-label', searchLabel);
             searchInputRef(input);
 
             const clearBtn = L.DomUtil.create('button', 'search-clear', inputWrapper);
             clearBtn.type = 'button';
             clearBtn.innerHTML = '&times;';
-            clearBtn.title = 'Effacer';
-            clearBtn.setAttribute('aria-label', 'Effacer la recherche');
+            clearBtn.title = searchClearTitle;
+            clearBtn.setAttribute('aria-label', searchClearLabel);
 
             const results = L.DomUtil.create('div', 'search-results', container);
             let activeIndex = -1;
@@ -539,8 +456,8 @@ export function createSearchControl({
                 previewLayer = item.layer;
                 previewLayerId = item.layerId;
                 if (previewLayer.setStyle) {
-                    previewLayer.setStyle(getHoverStyle(item.layerId));
-                    if (previewLayer.bringToFront && item.layerId !== 'bassin-minier' && item.layerId !== 'communes-mbm' && item.layerId !== 'epci' && item.layerId !== 'departements') {
+                    previewLayer.setStyle(getHoverStyle(item.layerId, styles));
+                    if (previewLayer.bringToFront && !noBringToFront.has(item.layerId)) {
                         previewLayer.bringToFront();
                     }
                 }
@@ -591,7 +508,7 @@ export function createSearchControl({
                 currentResults = items;
                 if (items.length === 0) {
                     if (input.value.trim().length >= 2) {
-                        results.innerHTML = '<div class="search-no-results">Aucun resultat</div>';
+                        results.innerHTML = `<div class="search-no-results">${escapeHtml(noResultsText)}</div>`;
                         results.classList.add('open');
                     } else {
                         results.classList.remove('open');
@@ -600,7 +517,7 @@ export function createSearchControl({
                 }
                 items.forEach((item, idx) => {
                     const div = L.DomUtil.create('div', 'search-result-item', results);
-                    const color = styles[item.layerId].fillColor || styles[item.layerId].color;
+                    const color = styles[item.layerId] ? (styles[item.layerId].fillColor || styles[item.layerId].color) : '#888';
                     div.innerHTML = `<div class="search-result-title"><span class="search-result-layer" style="background:${color}"></span>${escapeHtml(item.title)}</div>`
                         + `<div class="search-result-meta">${escapeHtml(item.meta)}</div>`;
                     div.addEventListener('click', () => selectResult(item));
@@ -711,9 +628,17 @@ export function createSearchControl({
 // --- Bottom Bar Control ---
 
 export function createBottomBarControl({
-    map, layersDrawer, toggleHelpOverlay, hideDetail, resetToDefaults, fitBassinBounds,
-    SearchControl
+    map, layersDrawer, toggleHelpOverlay, hideDetail, resetToDefaults, fitBounds,
+    SearchControl, trackEvent, labels
 }) {
+    const _labels = labels || {};
+    const layersLabel = _labels.layers || 'Couches';
+    const zoomInLabel = _labels.zoomIn || 'Zoom avant';
+    const zoomOutLabel = _labels.zoomOut || 'Zoom arri\u00e8re';
+    const fullExtentLabel = _labels.fullExtent || 'Vue d\'ensemble';
+    const resetViewLabel = _labels.resetView || 'R\u00e9initialiser la vue';
+    const shortcutsLabel = _labels.shortcuts || 'Raccourcis clavier';
+
     const BottomBarControl = L.Control.extend({
         options: { position: 'bottomleft' },
         onAdd: function (map) {
@@ -723,8 +648,8 @@ export function createBottomBarControl({
 
             const layersBtn = L.DomUtil.create('button', 'layers-toggle-btn', container);
             layersBtn.type = 'button';
-            layersBtn.title = 'Couches';
-            layersBtn.setAttribute('aria-label', 'Couches');
+            layersBtn.title = layersLabel;
+            layersBtn.setAttribute('aria-label', layersLabel);
             layersBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
             layersBtn.addEventListener('click', () => {
                 trackEvent('event/drawer', 'Layers drawer');
@@ -740,30 +665,30 @@ export function createBottomBarControl({
 
             const zoomIn = L.DomUtil.create('a', 'leaflet-control-zoom-in', zoomBar);
             zoomIn.href = '#';
-            zoomIn.title = 'Zoom avant';
+            zoomIn.title = zoomInLabel;
             zoomIn.setAttribute('role', 'button');
-            zoomIn.setAttribute('aria-label', 'Zoom avant');
+            zoomIn.setAttribute('aria-label', zoomInLabel);
             zoomIn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>';
 
             const fullExtent = L.DomUtil.create('a', 'leaflet-control-full-extent', zoomBar);
             fullExtent.href = '#';
-            fullExtent.title = 'Vue d\'ensemble';
+            fullExtent.title = fullExtentLabel;
             fullExtent.setAttribute('role', 'button');
-            fullExtent.setAttribute('aria-label', 'Vue d\'ensemble');
+            fullExtent.setAttribute('aria-label', fullExtentLabel);
             fullExtent.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
 
             const resetView = L.DomUtil.create('a', 'leaflet-control-reset-view', zoomBar);
             resetView.href = '#';
-            resetView.title = 'R\u00e9initialiser la vue';
+            resetView.title = resetViewLabel;
             resetView.setAttribute('role', 'button');
-            resetView.setAttribute('aria-label', 'R\u00e9initialiser la vue');
+            resetView.setAttribute('aria-label', resetViewLabel);
             resetView.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
 
             const zoomOut = L.DomUtil.create('a', 'leaflet-control-zoom-out', zoomBar);
             zoomOut.href = '#';
-            zoomOut.title = 'Zoom arri\u00e8re';
+            zoomOut.title = zoomOutLabel;
             zoomOut.setAttribute('role', 'button');
-            zoomOut.setAttribute('aria-label', 'Zoom arri\u00e8re');
+            zoomOut.setAttribute('aria-label', zoomOutLabel);
             zoomOut.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>';
 
             L.DomEvent.on(zoomIn, 'click', e => {
@@ -775,7 +700,7 @@ export function createBottomBarControl({
                 L.DomEvent.preventDefault(e);
                 trackEvent('event/view/full-extent', 'Full extent');
                 hideDetail();
-                fitBassinBounds(map);
+                fitBounds();
             });
             L.DomEvent.on(resetView, 'click', e => {
                 L.DomEvent.preventDefault(e);
@@ -790,8 +715,8 @@ export function createBottomBarControl({
 
             const helpBtn = L.DomUtil.create('button', 'help-toggle-btn', container);
             helpBtn.type = 'button';
-            helpBtn.title = 'Raccourcis clavier';
-            helpBtn.setAttribute('aria-label', 'Raccourcis clavier');
+            helpBtn.title = shortcutsLabel;
+            helpBtn.setAttribute('aria-label', shortcutsLabel);
             helpBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
             helpBtn.addEventListener('click', () => {
                 trackEvent('event/help', 'Help overlay');

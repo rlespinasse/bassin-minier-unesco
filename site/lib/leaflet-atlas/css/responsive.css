@@ -63,7 +63,7 @@
         overflow-y: auto;
     }
 
-    #detail-content {
+    .detail-content {
         min-width: unset;
     }
 

@@ -1,45 +1,12 @@
-// --- Detail panel content builders ---
+// --- Detail panel content builders (project-specific) ---
 
-import { styles, allLayerDefs, dataGouvSources } from './config.js';
-import {
-    escapeHtml, rawHtml, renderValue, communeLink, communeLinks, epciLink, deptLink,
-    terrilLinks, elementLink, featureLink, mhRows, normalizeText, deptNameFromInsee
-} from './helpers.js';
+import { dataGouvSources } from './config.js';
+import { communeLink, communeLinks, epciLink, deptLink, terrilLinks, elementLink, mhRows, deptNameFromInsee } from './helpers.js';
+import { rawHtml, normalizeText } from '../lib/leaflet-atlas/js/index.js';
 
-export function sourceRow(source) {
-    return ['Sources', rawHtml(`<a href="${source.url}" target="_blank" rel="noopener">${source.name}<span class="cross-link-icon"> \u2197</span></a>`)];
-}
+export function createDetailBuilders(helpers) {
+    const { buildDetail, buildReverseLinksSection, sourceRow, getReverseLinks, eachLayerFeature } = helpers;
 
-export function buildDetail(title, layerId, groups) {
-    const color = styles[layerId] ? (styles[layerId].fillColor || styles[layerId].color) : '#888';
-    const def = allLayerDefs.find(d => d.id === layerId);
-    const layerLabel = def ? def.label : layerId;
-    let html = `<div class="detail-header"><span class="detail-layer-type"><span class="detail-layer-badge" style="background:${color}"></span>${escapeHtml(layerLabel)}</span></div><h3>${escapeHtml(title)}</h3>`;
-    for (const group of groups) {
-        const rows = group.rows.filter(Boolean);
-        if (rows.length === 0) continue;
-        html += `<h4>${escapeHtml(group.label)}</h4><table>`;
-        for (const row of rows) {
-            html += `<tr><td>${escapeHtml(row[0])}</td><td>${renderValue(row[1])}</td></tr>`;
-        }
-        html += '</table>';
-    }
-    return html;
-}
-
-export function buildReverseLinksSection(data, sectionLabel) {
-    if (!data) return null;
-    const rows = [];
-    for (const [layerId, items] of Object.entries(data)) {
-        const def = allLayerDefs.find(d => d.id === layerId);
-        const layerLabel = def ? def.label : layerId;
-        const links = items.map(item => featureLink(layerId, item.index, item.label));
-        rows.push([layerLabel, rawHtml(links.join('<br>'))]);
-    }
-    return rows.length ? { label: sectionLabel, rows } : null;
-}
-
-export function createDetailBuilders(getReverseLinks) {
     return {
         'bassin-minier': p => buildDetail(p.nom || 'Bassin minier', 'bassin-minier', [
             {
@@ -213,13 +180,24 @@ export function createDetailBuilders(getReverseLinks) {
         },
         'communes-mbm': p => {
             const reverseLinks = getReverseLinks();
+            const deptName = (() => {
+                if (!p.insee || p.insee.length < 2) return null;
+                const prefix = p.insee.substring(0, 2);
+                let name = null;
+                eachLayerFeature('departements', lyr => {
+                    if (!name && lyr.feature.properties.code === prefix) {
+                        name = lyr.feature.properties.nom;
+                    }
+                });
+                return name;
+            })();
             const groups = [
                 {
                     label: 'Identification', rows: [
                         p.insee && ['INSEE', p.insee],
                         p.statut && ['Statut', p.statut],
                         p.epci_nom && ['EPCI', rawHtml(epciLink(p.epci_nom))],
-                        p.insee && deptNameFromInsee(p.insee) && ['D\u00e9partement', rawHtml(deptLink(deptNameFromInsee(p.insee)))]
+                        deptName && ['D\u00e9partement', rawHtml(deptLink(deptName))]
                     ]
                 },
                 {
@@ -240,14 +218,20 @@ export function createDetailBuilders(getReverseLinks) {
             if (reverseLinks && reverseLinks.epcis) {
                 const members = reverseLinks.epcis[normalizeText(p.nom)];
                 if (members && members['communes-mbm']) {
-                    const communesDef = allLayerDefs.find(d => d.id === 'communes-mbm');
-                    if (communesDef && communesDef._leafletLayer) {
-                        const communeLayers = [];
-                        communesDef._leafletLayer.eachLayer(lyr => communeLayers.push(lyr));
-                        for (const item of members['communes-mbm']) {
-                            const lyr = communeLayers[item.index];
-                            if (lyr) {
-                                const name = deptNameFromInsee(lyr.feature.properties.insee);
+                    const communeLayers = [];
+                    eachLayerFeature('communes-mbm', lyr => communeLayers.push(lyr));
+                    for (const item of members['communes-mbm']) {
+                        const lyr = communeLayers[item.index];
+                        if (lyr) {
+                            const insee = lyr.feature.properties.insee;
+                            if (insee && insee.length >= 2) {
+                                const prefix = insee.substring(0, 2);
+                                let name = null;
+                                eachLayerFeature('departements', dlyr => {
+                                    if (!name && dlyr.feature.properties.code === prefix) {
+                                        name = dlyr.feature.properties.nom;
+                                    }
+                                });
                                 if (name) deptSet.add(name);
                             }
                         }
