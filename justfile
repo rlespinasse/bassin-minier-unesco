@@ -62,6 +62,31 @@ clean:
 [group('data')]
 rebuild: clean convert
 
+# --- Site assets ---
+
+# Generate all favicon and icon files from favicon.svg (requires ImageMagick: brew install imagemagick)
+[group('site')]
+favicons:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v magick &>/dev/null; then
+        echo "Error: ImageMagick is required. Install it with: brew install imagemagick"
+        exit 1
+    fi
+    cd site
+    echo "Generating favicons from favicon.svg..."
+    magick -background none favicon.svg -resize 16x16 favicon-16x16.png
+    magick -background none favicon.svg -resize 32x32 favicon-32x32.png
+    magick -background none favicon.svg -resize 180x180 apple-touch-icon.png
+    magick -background none favicon.svg -resize 192x192 android-chrome-192x192.png
+    magick -background none favicon.svg -resize 512x512 android-chrome-512x512.png
+    magick -background none favicon.svg -resize 16x16 /tmp/fav-16.png
+    magick -background none favicon.svg -resize 32x32 /tmp/fav-32.png
+    magick -background none favicon.svg -resize 48x48 /tmp/fav-48.png
+    magick /tmp/fav-16.png /tmp/fav-32.png /tmp/fav-48.png favicon.ico
+    rm -f /tmp/fav-16.png /tmp/fav-32.png /tmp/fav-48.png
+    echo "Generated: favicon.ico favicon-16x16.png favicon-32x32.png apple-touch-icon.png android-chrome-192x192.png android-chrome-512x512.png"
+
 # --- Dev ---
 
 # Start a local development server
