@@ -114,6 +114,9 @@
         btn.title = `${active ? 'Masquer' : 'Afficher'} ${scope}`;
     }
 
+    // Module-level reference to search input (assigned in SearchControl.onAdd)
+    let searchInput = null;
+
     // --- Map initialization ---
 
     const map = L.map('map', { zoomControl: false, zoomSnap: 0.5 }).setView([50.35, 2.8], 10);
@@ -458,6 +461,7 @@
 
     const detailBackStack = []; // past entries
     const detailForwardStack = []; // future entries
+    let lastClosedDetail = null; // stores { html, featureInfo } of last closed panel
     const detailBack = document.getElementById('detail-back');
     const detailForward = document.getElementById('detail-forward');
     const detailClearHistory = document.getElementById('detail-clear-history');
@@ -495,12 +499,26 @@
     }
 
     function hideDetail() {
+        // Save current content before clearing so it can be reopened with P
+        if (detailPanel.classList.contains('open') && detailContent.innerHTML) {
+            lastClosedDetail = {
+                html: detailContent.innerHTML,
+                featureInfo: selectedFeatureInfo ? { ...selectedFeatureInfo } : null
+            };
+        }
         detailPanel.classList.remove('open');
         selectedFeatureInfo = null;
         detailBackStack.length = 0;
         detailForwardStack.length = 0;
         updateNavButtons();
         map.invalidateSize();
+        if (loadedCount >= allLayerDefs.length) updateHash();
+    }
+
+    function reopenLastDetail() {
+        if (!lastClosedDetail) return;
+        selectedFeatureInfo = lastClosedDetail.featureInfo;
+        showDetail(lastClosedDetail.html);
         if (loadedCount >= allLayerDefs.length) updateHash();
     }
 
@@ -736,13 +754,70 @@
         }
     });
 
+    // Help overlay reference (created after controls init)
+    let helpOverlay = null;
+
+    function toggleHelpOverlay() {
+        if (!helpOverlay) return;
+        helpOverlay.classList.toggle('open');
+    }
+
     document.addEventListener('keydown', e => {
+        // Skip if user is typing in an input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+        const key = e.key.toLowerCase();
+
         if (e.key === 'Escape') {
-            if (layersDrawer && layersDrawer.isOpen()) {
+            if (helpOverlay && helpOverlay.classList.contains('open')) {
+                helpOverlay.classList.remove('open');
+            } else if (layersDrawer && layersDrawer.isOpen()) {
                 layersDrawer.close();
             } else {
                 hideDetail();
             }
+        } else if (e.key === '+') {
+            trackEvent('event/shortcut/zoom-in', 'Shortcut zoom in');
+        } else if (e.key === '-') {
+            trackEvent('event/shortcut/zoom-out', 'Shortcut zoom out');
+        } else if (key === 'e') {
+            trackEvent('event/shortcut/full-extent', 'Shortcut full extent');
+            hideDetail();
+            const bassinDef = allLayerDefs.find(d => d.id === 'bassin-minier');
+            if (bassinDef && bassinDef._leafletLayer) {
+                map.fitBounds(bassinDef._leafletLayer.getBounds(), { paddingTopLeft: [20, 80], paddingBottomRight: [20, 20] });
+            } else {
+                map.setView([50.35, 2.8], 10);
+            }
+        } else if (key === 'r') {
+            trackEvent('event/shortcut/reset', 'Shortcut reset view');
+            resetToDefaults();
+        } else if (key === 'f') {
+            e.preventDefault();
+            trackEvent('event/shortcut/search', 'Shortcut open search');
+            if (searchInput) {
+                searchInput.classList.add('expanded');
+                searchInput.focus();
+            }
+        } else if (key === 'c') {
+            trackEvent('event/shortcut/layers', 'Shortcut layers drawer');
+            layersDrawer.toggle();
+        } else if (key === 'p') {
+            trackEvent('event/shortcut/toggle-panel', 'Shortcut toggle panel');
+            if (detailPanel.classList.contains('open')) {
+                hideDetail();
+            } else {
+                reopenLastDetail();
+            }
+        } else if (key === 'h') {
+            trackEvent('event/shortcut/panel-back', 'Shortcut panel back');
+            detailBack.click();
+        } else if (key === 'j') {
+            trackEvent('event/shortcut/panel-forward', 'Shortcut panel forward');
+            detailForward.click();
+        } else if (e.key === '?') {
+            trackEvent('event/shortcut/help', 'Shortcut help overlay');
+            toggleHelpOverlay();
         }
     });
 
@@ -1682,6 +1757,7 @@
             input.type = 'text';
             input.placeholder = 'Rechercher un lieu...';
             input.setAttribute('aria-label', 'Rechercher');
+            searchInput = input;
 
             const clearBtn = L.DomUtil.create('button', 'search-clear', inputWrapper);
             clearBtn.type = 'button';
@@ -1955,6 +2031,17 @@
                 map.zoomOut();
             });
 
+            // Help button
+            const helpBtn = L.DomUtil.create('button', 'help-toggle-btn', container);
+            helpBtn.type = 'button';
+            helpBtn.title = 'Raccourcis clavier';
+            helpBtn.setAttribute('aria-label', 'Raccourcis clavier');
+            helpBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+            helpBtn.addEventListener('click', () => {
+                trackEvent('event/help', 'Help overlay');
+                toggleHelpOverlay();
+            });
+
             return container;
         }
     });
@@ -1976,6 +2063,64 @@
     }
 
     new BottomBarControl().addTo(map);
+
+    // --- Keyboard help overlay ---
+    (function createHelpOverlay() {
+        const overlay = document.createElement('div');
+        overlay.className = 'help-overlay';
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) overlay.classList.remove('open');
+        });
+
+        const card = document.createElement('div');
+        card.className = 'help-card';
+
+        const title = document.createElement('h2');
+        title.textContent = 'Raccourcis clavier';
+        card.appendChild(title);
+
+        const shortcuts = [
+            ['?', 'Aide raccourcis clavier'],
+            ['F', 'Rechercher'],
+            ['E', 'Vue d\u2019ensemble'],
+            ['R', 'R\u00e9initialiser la vue'],
+            ['C', 'Couches (ouvrir/fermer)'],
+            ['P', 'Panneau (ouvrir/fermer)'],
+            ['H', 'Panneau : pr\u00e9c\u00e9dent'],
+            ['J', 'Panneau : suivant'],
+            ['+', 'Zoom avant'],
+            ['\u2212', 'Zoom arri\u00e8re'],
+            ['Echap', 'Fermer']
+        ];
+
+        const table = document.createElement('table');
+        shortcuts.forEach(([key, desc]) => {
+            const tr = document.createElement('tr');
+            const tdKey = document.createElement('td');
+            const kbd = document.createElement('kbd');
+            kbd.textContent = key;
+            tdKey.appendChild(kbd);
+            const tdDesc = document.createElement('td');
+            tdDesc.textContent = desc;
+            tr.appendChild(tdKey);
+            tr.appendChild(tdDesc);
+            table.appendChild(tr);
+        });
+        card.appendChild(table);
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'help-close-btn';
+        closeBtn.type = 'button';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.title = 'Fermer';
+        closeBtn.setAttribute('aria-label', 'Fermer l\u2019aide');
+        closeBtn.addEventListener('click', () => overlay.classList.remove('open'));
+        card.appendChild(closeBtn);
+
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        helpOverlay = overlay;
+    })();
 
     const boundsGroup = L.featureGroup();
     let loadedCount = 0;
