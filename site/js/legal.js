@@ -6,6 +6,7 @@ export function buildLegalPages(dataGouvSources) {
             id: 'mentions-legales',
             label: 'Mentions légales',
             content: `
+                <p class="sr-only">Tous les liens de cette page s'ouvrent dans un nouvel onglet.</p>
                 <h3>Éditeur / Directeur de la publication</h3>
                 <p>Romain Lespinasse</p>
 
@@ -23,6 +24,7 @@ export function buildLegalPages(dataGouvSources) {
             id: 'confidentialite',
             label: 'Confidentialité',
             content: `
+                <p class="sr-only">Tous les liens de cette page s'ouvrent dans un nouvel onglet.</p>
                 <h3>Mesure d'audience</h3>
                 <p><a href="https://www.goatcounter.com/" target="_blank" rel="noopener">GoatCounter</a> (open source, respectueux de la vie privée).</p>
 
@@ -51,6 +53,7 @@ export function buildLegalPages(dataGouvSources) {
             id: 'credits',
             label: 'Crédits',
             content: `
+                <p class="sr-only">Tous les liens de cette page s'ouvrent dans un nouvel onglet.</p>
                 <h3>Sources de données</h3>
                 <ul>
                     ${Object.values(dataGouvSources).map(s =>

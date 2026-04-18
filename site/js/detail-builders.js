@@ -389,7 +389,7 @@ export function createDetailBuilders(helpers) {
                 },
                 {
                     label: 'Liens', rows: [
-                        p.brgm && /^https?:\/\//.test(p.brgm) && ['Fiche BRGM', rawHtml(`<a href="${encodeURI(p.brgm)}" target="_blank" rel="noopener">Voir<span class="cross-link-icon"> \u2197</span></a>`)],
+                        p.brgm && /^https?:\/\//.test(p.brgm) && ['Fiche BRGM', rawHtml(`<a href="${encodeURI(p.brgm)}" target="_blank" rel="noopener">Voir la fiche BRGM<span class="sr-only"> (s'ouvre dans un nouvel onglet)</span><span class="cross-link-icon" aria-hidden="true"> \u2197</span></a>`)],
                         sourceRow(dataGouvSources.puits)
                     ]
                 }
