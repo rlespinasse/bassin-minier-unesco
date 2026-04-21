@@ -3,7 +3,7 @@
 
 Fetches commune contours for departments 59 (Nord) and 62 (Pas-de-Calais),
 dissolves them into single department polygons, simplifies geometries
-and outputs site/data/departements.geojson.
+and outputs site/public/data/departements.geojson.
 """
 
 import json
@@ -14,7 +14,7 @@ from shapely.ops import unary_union
 
 from utils import fetch_json, round_coords
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'site', 'data')
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'site', 'public', 'data')
 
 COORD_PRECISION = 6
 SIMPLIFY_TOLERANCE = 0.001

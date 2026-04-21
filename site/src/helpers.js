@@ -1,6 +1,6 @@
 // --- Project-specific helpers ---
 
-const { crossLink, rawHtml, normalizeText } = LeafletAtlas;
+import { crossLink, rawHtml } from 'leaflet-atlas';
 
 // --- Cross-link helpers ---
 

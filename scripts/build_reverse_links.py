@@ -4,14 +4,14 @@
 Scans all 15 GeoJSON files and produces a reverse lookup table so that
 communes, UNESCO elements, and terrils can discover which features reference them.
 
-Output: site/data/reverse-links.json
+Output: site/public/data/reverse-links.json
 """
 
 import json
 import os
 import unicodedata
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'site', 'data')
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'site', 'public', 'data')
 
 
 def load_geojson(name):

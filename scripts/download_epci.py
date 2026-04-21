@@ -3,7 +3,7 @@
 
 Fetches EPCI GeoJSON for departments 59 (Nord) and 62 (Pas-de-Calais),
 filters to only EPCIs that contain bassin minier communes, simplifies
-geometries and outputs site/data/epci.geojson.
+geometries and outputs site/public/data/epci.geojson.
 """
 
 import json
@@ -11,7 +11,7 @@ import os
 
 from utils import fetch_json, round_coords
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'site', 'data')
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'site', 'public', 'data')
 
 COORD_PRECISION = 6
 

@@ -4,3 +4,27 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions-minor-patch:
+        update-types:
+          - minor
+          - patch
+      actions-major:
+        update-types:
+          - major
+  - package-ecosystem: npm
+    directory: /site
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-patch:
+        update-types:
+          - minor
+          - patch
+      npm-major:
+        update-types:
+          - major
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly

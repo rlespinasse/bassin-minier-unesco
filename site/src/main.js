@@ -1,6 +1,8 @@
-// --- Bassin Minier UNESCO - Application entry point ---
+import 'leaflet/dist/leaflet.css';
+import 'leaflet-atlas/css';
+import './style.css';
 
-const { MapApp } = LeafletAtlas;
+import { MapApp } from 'leaflet-atlas';
 import {
     styles, layerPatterns, tooltipText, layerGroups, contextLayers,
     layerPanes, borderClickLayers, searchableProps, dataGouvSources

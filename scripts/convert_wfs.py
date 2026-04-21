@@ -3,12 +3,11 @@
 
 import geopandas as gpd
 import json
-import urllib.request
 from pathlib import Path
 
-from utils import round_coords
+from utils import open_url, round_coords
 
-OUTPUT_DIR = Path(__file__).parent.parent / "site" / "data"
+OUTPUT_DIR = Path(__file__).parent.parent / "site" / "public" / "data"
 
 # WFS sources: download GeoJSON directly from WFS endpoints
 WFS_BASE = (
@@ -186,8 +185,7 @@ def convert_wfs(config):
     output_path = OUTPUT_DIR / config["output"]
 
     print(f"Downloading from WFS: {config['output']}...")
-    req = urllib.request.Request(config["url"], headers={"User-Agent": "bassin-minier-unesco/1.0"})
-    with urllib.request.urlopen(req) as response:
+    with open_url(config["url"]) as response:
         geojson_dict = json.loads(response.read().decode("utf-8"))
 
     gdf = gpd.GeoDataFrame.from_features(geojson_dict["features"], crs="EPSG:4326")

@@ -1,5 +1,6 @@
 [tools]
 python = "3"
+node = "22"
 just = "latest"
 uv = "latest"
 

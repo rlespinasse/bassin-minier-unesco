@@ -2,7 +2,7 @@
 
 import { dataGouvSources } from './config.js';
 import { communeLink, communeLinks, epciLink, deptLink, terrilLinks, elementLink, mhRows } from './helpers.js';
-const { rawHtml, normalizeText } = LeafletAtlas;
+import { rawHtml, normalizeText } from 'leaflet-atlas';
 
 export function createDetailBuilders(helpers) {
     const { buildDetail, buildReverseLinksSection, sourceRow, getReverseLinks, eachLayerFeature } = helpers;

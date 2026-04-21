@@ -13,7 +13,7 @@ import os
 
 from utils import fetch_json
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'site', 'data')
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'site', 'public', 'data')
 
 
 def load_geojson(name):

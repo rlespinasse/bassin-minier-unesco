@@ -5,13 +5,12 @@ import geopandas as gpd
 import json
 import os
 import tempfile
-import urllib.request
 import zipfile
 from pathlib import Path
 
-from utils import round_coords
+from utils import open_url, round_coords
 
-OUTPUT_DIR = Path(__file__).parent.parent / "site" / "data"
+OUTPUT_DIR = Path(__file__).parent.parent / "site" / "public" / "data"
 
 # Data sources: each has a URL, optional subdirectory, and shapefile configurations
 DATA_SOURCES = [
@@ -165,8 +164,7 @@ def download_and_extract(url, dest_dir):
     """Download ZIP from data.gouv.fr and extract to dest_dir."""
     zip_path = os.path.join(dest_dir, "data.zip")
     print(f"Downloading from data.gouv.fr...")
-    req = urllib.request.Request(url, headers={"User-Agent": "bassin-minier-unesco/1.0"})
-    with urllib.request.urlopen(req) as response, open(zip_path, "wb") as out:
+    with open_url(url) as response, open(zip_path, "wb") as out:
         out.write(response.read())
     print(f"Extracting to {dest_dir}...")
     with zipfile.ZipFile(zip_path, "r") as zf:

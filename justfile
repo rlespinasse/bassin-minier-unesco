@@ -2,7 +2,7 @@
 
 set dotenv-load := false
 
-python := "python3"
+python := ".venv/bin/python"
 port := "8000"
 
 # List available recipes
@@ -11,10 +11,10 @@ default:
 
 # --- Setup ---
 
-# Install Python dependencies (geopandas)
+# Install Python dependencies
 [group('setup')]
 install:
-    uv pip install geopandas
+    uv pip install -r requirements.txt
 
 # --- Data ---
 
@@ -55,8 +55,8 @@ reverse-links:
 # Remove generated GeoJSON files
 [group('data')]
 clean:
-    rm -f site/data/*.geojson
-    @echo "Cleaned site/data/"
+    rm -f site/public/data/*.geojson
+    @echo "Cleaned site/public/data/"
 
 # Rebuild: clean then convert
 [group('data')]
@@ -73,7 +73,7 @@ favicons:
         echo "Error: ImageMagick is required. Install it with: brew install imagemagick"
         exit 1
     fi
-    cd site
+    cd site/public
     echo "Generating favicons from favicon.svg..."
     magick -background none favicon.svg -resize 16x16 favicon-16x16.png
     magick -background none favicon.svg -resize 32x32 favicon-32x32.png
@@ -87,13 +87,24 @@ favicons:
     rm -f /tmp/fav-16.png /tmp/fav-32.png /tmp/fav-48.png
     echo "Generated: favicon.ico favicon-16x16.png favicon-32x32.png apple-touch-icon.png android-chrome-192x192.png android-chrome-512x512.png"
 
+# --- Site build ---
+
+# Install npm dependencies for the site
+[group('site')]
+site-install:
+    cd site && npm ci
+
+# Build the site for production (outputs to site/dist/)
+[group('site')]
+site-build: site-install
+    cd site && npm run build
+
 # --- Dev ---
 
-# Start a local development server
+# Start the Vite dev server with hot reload
 [group('dev')]
-serve:
-    @echo "Serving site at http://localhost:{{ port }}"
-    cd site && {{ python }} -m http.server {{ port }}
+serve: site-install
+    cd site && npm run dev
 
 # Convert shapefiles then start the dev server
 [group('dev')]
@@ -101,7 +112,7 @@ dev: convert serve
 
 # --- Quality ---
 
-# Check that all 17 GeoJSON files exist in site/data/
+# Check that all 17 GeoJSON files exist in site/public/data/
 [group('quality')]
 check:
     #!/usr/bin/env bash
@@ -128,15 +139,15 @@ check:
     )
     missing=0
     for f in "${files[@]}"; do
-        if [ -f "site/data/$f" ]; then
-            size=$(du -h "site/data/$f" | cut -f1)
-            echo "OK   site/data/$f ($size)"
+        if [ -f "site/public/data/$f" ]; then
+            size=$(du -h "site/public/data/$f" | cut -f1)
+            echo "OK   site/public/data/$f ($size)"
         else
-            echo "MISS site/data/$f"
+            echo "MISS site/public/data/$f"
             missing=$((missing + 1))
         fi
     done
-    total=$(du -sh site/data/ | cut -f1)
+    total=$(du -sh site/public/data/ | cut -f1)
     echo ""
     echo "Total: $total"
     if [ "$missing" -gt 0 ]; then
@@ -151,7 +162,7 @@ validate:
     #!/usr/bin/env bash
     set -euo pipefail
     errors=0
-    for f in site/data/*.geojson; do
+    for f in site/public/data/*.geojson; do
         if {{ python }} -c "import json; json.load(open('$f'))" 2>/dev/null; then
             count=$({{ python }} -c "import json; d=json.load(open('$f')); print(len(d.get('features',[])))")
             echo "OK   $f ($count features)"
