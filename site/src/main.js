@@ -10,6 +10,7 @@ import {
 import { buildLegalPages } from './legal.js';
 import { createDetailBuilders } from './detail-builders.js';
 import { crossLinkHandlers, buildCommuneIndex } from './cross-links.js';
+import { initOrthophotosHistoriques } from './orthophoto-control.js';
 
 const app = new MapApp({
     map: { center: [50.35, 2.8], zoom: 10, elementId: 'map', zoomSnap: 0.5 },
@@ -78,5 +79,6 @@ const app = new MapApp({
     reverseLinksUrl: 'data/reverse-links.json',
     onReady: app => {
         buildCommuneIndex(app);
+        initOrthophotosHistoriques(app);
     },
 });

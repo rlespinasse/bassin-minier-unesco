@@ -240,6 +240,30 @@ export const dataGouvSources = {
     geoApi: {
         name: 'API D\u00e9coupage Administratif (API Geo)',
         url: 'https://geo.api.gouv.fr'
+    },
+    orthoHistorique1950: {
+        name: 'BD ORTHO Historique - ann\u00e9es 50 - Nord-Pas-de-Calais',
+        url: 'https://www.data.gouv.fr/datasets/bd-ortho-historique-annees-50-pas-de-calais/'
+    },
+    orthoHistorique1998: {
+        name: 'Orthophotographie du Nord-Pas de Calais (1998)',
+        url: 'https://www.data.gouv.fr/datasets/orthophotographie-du-nord-pas-de-calais-1998-rayonnement-visible/'
+    },
+    orthoHistorique2005: {
+        name: 'Orthophotographie Nord-Pas de Calais 2005',
+        url: 'https://www.data.gouv.fr/datasets/orthophotographie-nord-pas-de-calais-2005/'
+    },
+    orthoHistorique2009: {
+        name: 'Orthophotographie couleur Nord-Pas de Calais 2009',
+        url: 'https://www.data.gouv.fr/datasets/orthophotographie-couleur-nord-pas-de-calais-2009/'
+    },
+    orthoHistorique2012: {
+        name: 'Orthophotographie Nord-Pas de Calais 2012-2013',
+        url: 'https://www.data.gouv.fr/datasets/orthophotographie-nord-pas-de-calais-2012-2013/'
+    },
+    orthoHistorique2015: {
+        name: 'Orthophotographie Nord et Pas-de-Calais 2015',
+        url: 'https://www.data.gouv.fr/datasets/orthophotographie-nord-et-pas-de-calais-2015/'
     }
 };
 

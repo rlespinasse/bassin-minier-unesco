@@ -69,6 +69,14 @@ export function buildLegalPages(dataGouvSources) {
                     <li><a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a></li>
                 </ul>
 
+                <h3>Orthophotographies historiques</h3>
+                <p>
+                    Couche optionnelle diffusée en direct par le service WMS de
+                    <a href="https://www.geo2france.fr/" target="_blank" rel="noopener">Géo2France</a>
+                    (partenariat régional Hauts-de-France) et l'IGN — voir les jeux de données
+                    correspondants ci-dessus (1949-1955, 1998, 2005, 2009, 2012-2013, 2015).
+                </p>
+
                 <h3>Bibliothèques</h3>
                 <ul>
                     <li><a href="https://github.com/rlespinasse/leaflet-atlas" target="_blank" rel="noopener">leaflet-atlas</a> (basé sur <a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a>)</li>
