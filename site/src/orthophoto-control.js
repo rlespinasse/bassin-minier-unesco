@@ -60,6 +60,9 @@ export function initOrthophotosHistoriques(app) {
       currentLayer = null;
     }
     setActiveCard(noneCard);
+    if (window.goatcounter?.count) {
+      window.goatcounter.count({ path: '/bassin-minier-unesco/orthophoto/none', title: 'Orthophoto: None selected' });
+    }
   });
   cardList.appendChild(noneCard);
   cards.push(noneCard);
@@ -87,6 +90,9 @@ export function initOrthophotosHistoriques(app) {
       currentLayer = createOrthoHistoriqueLayer(millesime);
       currentLayer.addTo(map);
       setActiveCard(card);
+      if (window.goatcounter?.count) {
+        window.goatcounter.count({ path: `/bassin-minier-unesco/orthophoto/${millesime.layer}`, title: `Orthophoto: ${millesime.libelle}` });
+      }
     });
 
     cardList.appendChild(card);
