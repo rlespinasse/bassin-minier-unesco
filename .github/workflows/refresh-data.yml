@@ -1,0 +1,39 @@
+name: Refresh data
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Lundi 00:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: jdx/mise-action@v4
+      - run: uv pip install -r requirements.txt
+      - run: just convert
+      - run: just validate
+      - run: just check
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          commit-message: |
+            chore(data): refresh datasets
+
+            Auto-refresh triggered by scheduled workflow
+          title: 'chore(data): refresh datasets'
+          body: |
+            This PR contains automatically refreshed geospatial datasets
+            (`just convert`).
+
+            Please review the changes before merging.
+          branch: data/refresh-${{ github.run_number }}
+          delete-branch: true
+          add-paths: |
+            site/public/data/*.geojson
+            site/public/data/reverse-links.json
