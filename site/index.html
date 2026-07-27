@@ -1,42 +1,69 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Bassin Minier du Nord-Pas de Calais - Patrimoine mondial UNESCO</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-    <link rel="shortcut icon" href="favicon.ico">
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-    <link rel="manifest" href="site.webmanifest">
-    <meta name="theme-color" content="#4a90d9">
-    <meta name="description" content="Carte interactive du Bassin Minier du Nord-Pas de Calais, inscrit au patrimoine mondial de l'UNESCO. Explorez les terrils, cités minières, cavaliers, bâtis et espaces néo-naturels.">
-    <meta name="author" content="rlespinasse">
-    <link rel="canonical" href="https://rlespinasse.github.io/bassin-minier-unesco/">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
+    <link rel="shortcut icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+    <link rel="manifest" href="site.webmanifest" />
+    <meta name="theme-color" content="#4a90d9" />
+    <meta
+      name="description"
+      content="Carte interactive du Bassin Minier du Nord-Pas de Calais, inscrit au patrimoine mondial de l'UNESCO. Explorez les terrils, cités minières, cavaliers, bâtis et espaces néo-naturels."
+    />
+    <meta name="author" content="rlespinasse" />
+    <link rel="canonical" href="https://rlespinasse.github.io/bassin-minier-unesco/" />
 
     <!-- Open Graph -->
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="Bassin Minier du Nord-Pas de Calais - Patrimoine mondial UNESCO">
-    <meta property="og:description" content="Carte interactive du Bassin Minier du Nord-Pas de Calais, inscrit au patrimoine mondial de l'UNESCO. Explorez les terrils, cités minières, cavaliers, bâtis et espaces néo-naturels.">
-    <meta property="og:url" content="https://rlespinasse.github.io/bassin-minier-unesco/">
-    <meta property="og:image" content="https://rlespinasse.github.io/bassin-minier-unesco/android-chrome-512x512.png">
-    <meta property="og:image:width" content="512">
-    <meta property="og:image:height" content="512">
-    <meta property="og:image:alt" content="Bassin Minier du Nord-Pas de Calais - Patrimoine mondial UNESCO">
-    <meta property="og:locale" content="fr_FR">
-    <meta property="og:site_name" content="Bassin Minier UNESCO">
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Bassin Minier du Nord-Pas de Calais - Patrimoine mondial UNESCO"
+    />
+    <meta
+      property="og:description"
+      content="Carte interactive du Bassin Minier du Nord-Pas de Calais, inscrit au patrimoine mondial de l'UNESCO. Explorez les terrils, cités minières, cavaliers, bâtis et espaces néo-naturels."
+    />
+    <meta property="og:url" content="https://rlespinasse.github.io/bassin-minier-unesco/" />
+    <meta
+      property="og:image"
+      content="https://rlespinasse.github.io/bassin-minier-unesco/android-chrome-512x512.png"
+    />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta
+      property="og:image:alt"
+      content="Bassin Minier du Nord-Pas de Calais - Patrimoine mondial UNESCO"
+    />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:site_name" content="Bassin Minier UNESCO" />
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="Bassin Minier du Nord-Pas de Calais - Patrimoine mondial UNESCO">
-    <meta name="twitter:description" content="Carte interactive du Bassin Minier du Nord-Pas de Calais, inscrit au patrimoine mondial de l'UNESCO. Explorez les terrils, cités minières, cavaliers, bâtis et espaces néo-naturels.">
-    <meta name="twitter:image" content="https://rlespinasse.github.io/bassin-minier-unesco/android-chrome-512x512.png">
-    <meta name="twitter:image:alt" content="Bassin Minier du Nord-Pas de Calais - Patrimoine mondial UNESCO">
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="Bassin Minier du Nord-Pas de Calais - Patrimoine mondial UNESCO"
+    />
+    <meta
+      name="twitter:description"
+      content="Carte interactive du Bassin Minier du Nord-Pas de Calais, inscrit au patrimoine mondial de l'UNESCO. Explorez les terrils, cités minières, cavaliers, bâtis et espaces néo-naturels."
+    />
+    <meta
+      name="twitter:image"
+      content="https://rlespinasse.github.io/bassin-minier-unesco/android-chrome-512x512.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="Bassin Minier du Nord-Pas de Calais - Patrimoine mondial UNESCO"
+    />
 
     <!-- Schema.org -->
     <script type="application/ld+json">
-    {
+      {
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "Bassin Minier du Nord-Pas de Calais - Patrimoine mondial UNESCO",
@@ -47,29 +74,45 @@
         "inLanguage": "fr",
         "isAccessibleForFree": true,
         "about": {
-            "@type": "Place",
-            "name": "Bassin Minier du Nord-Pas de Calais",
-            "description": "Paysage culturel évolutif vivant inscrit sur la Liste du patrimoine mondial de l'UNESCO en 2012.",
-            "geo": {
-                "@type": "GeoCoordinates",
-                "latitude": 50.4,
-                "longitude": 2.8
-            },
-            "additionalType": "https://www.wikidata.org/wiki/Q1040285"
+          "@type": "Place",
+          "name": "Bassin Minier du Nord-Pas de Calais",
+          "description": "Paysage culturel évolutif vivant inscrit sur la Liste du patrimoine mondial de l'UNESCO en 2012.",
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 50.4,
+            "longitude": 2.8
+          },
+          "additionalType": "https://www.wikidata.org/wiki/Q1040285"
         }
-    }
+      }
     </script>
-
-</head>
-<body>
+  </head>
+  <body>
     <a href="#map" class="skip-link">Aller au contenu principal</a>
     <main>
-        <h1 class="sr-only">Bassin Minier du Nord-Pas de Calais — Patrimoine mondial UNESCO</h1>
-        <div id="map" role="application" aria-label="Carte interactive du Bassin Minier du Nord-Pas de Calais"></div>
+      <h1 class="sr-only">Bassin Minier du Nord-Pas de Calais — Patrimoine mondial UNESCO</h1>
+      <div
+        id="map"
+        role="application"
+        aria-label="Carte interactive du Bassin Minier du Nord-Pas de Calais"
+      ></div>
     </main>
 
     <script type="module" src="/src/main.js"></script>
-    <script data-goatcounter="https://rlespinasse.goatcounter.com/count"
-            async src="//gc.zgo.at/count.js"></script>
-</body>
+    <!--
+        Analytics: GoatCounter (compte "rlespinasse", respectueux de la vie
+        privée, sans cookies). Le suivi des pages vues et des événements
+        internes à leaflet-atlas est configuré via l'option `analytics` de
+        MapApp dans src/main.js. Les événements personnalisés du site
+        (ex. sélection d'une orthophoto historique) utilisent le helper
+        `trackEvent()` de src/analytics.js, qui s'appuie sur ce script.
+        Voir docs/explanation et src/legal.js (page "Confidentialité") pour
+        le détail des données collectées.
+    -->
+    <script
+      data-goatcounter="https://rlespinasse.goatcounter.com/count"
+      async
+      src="//gc.zgo.at/count.js"
+    ></script>
+  </body>
 </html>

@@ -1,4 +1,9 @@
-import { MILLESIMES_HISTORIQUES, createOrthoHistoriqueLayer, buildThumbnailUrl } from './orthophotos-historiques.js';
+import {
+  MILLESIMES_HISTORIQUES,
+  createOrthoHistoriqueLayer,
+  buildThumbnailUrl,
+} from './orthophotos-historiques.js';
+import { trackEvent } from './analytics.js';
 
 /**
  * Injecte un sélecteur de millésime d'orthophoto historique dans l'onglet
@@ -18,7 +23,9 @@ export function initOrthophotosHistoriques(app) {
     ?.closest('.layers-drawer-tab-content');
 
   if (!contentFond) {
-    console.warn('[orthophotos-historiques] onglet "Fond de carte" introuvable, contrôle non injecté.');
+    console.warn(
+      '[orthophotos-historiques] onglet "Fond de carte" introuvable, contrôle non injecté.'
+    );
     return;
   }
 
@@ -60,9 +67,7 @@ export function initOrthophotosHistoriques(app) {
       currentLayer = null;
     }
     setActiveCard(noneCard);
-    if (window.goatcounter?.count) {
-      window.goatcounter.count({ path: '/bassin-minier-unesco/orthophoto/none', title: 'Orthophoto: None selected' });
-    }
+    trackEvent('orthophoto/none', 'Orthophoto: None selected');
   });
   cardList.appendChild(noneCard);
   cards.push(noneCard);
@@ -90,9 +95,7 @@ export function initOrthophotosHistoriques(app) {
       currentLayer = createOrthoHistoriqueLayer(millesime);
       currentLayer.addTo(map);
       setActiveCard(card);
-      if (window.goatcounter?.count) {
-        window.goatcounter.count({ path: `/bassin-minier-unesco/orthophoto/${millesime.layer}`, title: `Orthophoto: ${millesime.libelle}` });
-      }
+      trackEvent(`orthophoto/${millesime.layer}`, `Orthophoto: ${millesime.libelle}`);
     });
 
     cardList.appendChild(card);
