@@ -1,5 +1,6 @@
 // --- Consumer cross-link handlers ---
 
+import L from 'leaflet';
 import { normalizeText } from 'leaflet-atlas';
 
 let communeIndex = null;
