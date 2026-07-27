@@ -3,72 +3,74 @@
 *,
 *::before,
 *::after {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: var(--color-text);
 }
 
 /* --- Accessibility --- */
 
 .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .skip-link {
-    position: absolute;
-    top: -100%;
-    left: 0;
-    z-index: 10000;
-    padding: 0.75em 1.5em;
-    background: #4a90d9;
-    color: #fff;
-    font-weight: bold;
-    text-decoration: none;
+  position: absolute;
+  top: -100%;
+  left: 0;
+  z-index: 10000;
+  padding: 0.75em 1.5em;
+  background: #4a90d9;
+  color: #fff;
+  font-weight: bold;
+  text-decoration: none;
 }
 
 .skip-link:focus {
-    top: 0;
+  top: 0;
 }
 
 :focus-visible {
-    outline: 3px solid #4a90d9;
-    outline-offset: 2px;
+  outline: 3px solid #4a90d9;
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
-    }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* --- Project-specific styles --- */
 
 main {
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    position: relative;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  position: relative;
 }
 
 #map {
-    width: 100%;
-    height: 100%;
+  width: 100%;
+  height: 100%;
 }
 
 /* --- Orthophoto historique : cartes injectées dans l'onglet "Fond de carte" --- */
@@ -77,12 +79,12 @@ main {
    ci-dessous sont spécifiques à cette section. */
 
 .orthophoto-historique-section {
-    margin-top: 0.75rem;
-    padding-top: 0.6rem;
-    border-top: 1px solid var(--color-border-light);
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--color-border-light);
 }
 
 .orthophoto-historique-section .drawer-base-card:not(:has(img)) {
-    justify-content: center;
-    min-height: 64px;
+  justify-content: center;
+  min-height: 64px;
 }
