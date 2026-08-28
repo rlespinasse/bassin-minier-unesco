@@ -4,6 +4,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 5
+    commit-message:
+      prefix: build
+      include: scope
     groups:
       actions-minor-patch:
         update-types:
@@ -16,6 +21,12 @@ updates:
     directory: /site
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 5
+    commit-message:
+      prefix: build
+      include: scope
+    open-pull-requests-limit: 10
     groups:
       npm-minor-patch:
         update-types:
@@ -28,3 +39,15 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 5
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      pip:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
